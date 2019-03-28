@@ -1,5 +1,4 @@
 from src.Text import Text
-from src.NuxeoData import Data
 
 
 class Phrase(Text):

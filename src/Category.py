@@ -21,11 +21,11 @@ class PhraseBook(Item):
             img.validate()
 
 
-class Category(PhraseBook):
+class Category(PhraseBook):  # review validation
 
     def __init__(self, dialect, item_id, name, private, parent, namefr, image, change):
         super().__init__(dialect, item_id, name, image, change)
-        self.private = private
+        self.private = private  # don't correspond to nuxeo
         self.parent = parent
         self.name_fr = namefr
 

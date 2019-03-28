@@ -10,16 +10,21 @@ from src.Item import Item
 from src.Word import Word
 from src.Phrase import Phrase
 from src.Book import Book
-from src.NuxeoData import Data
 from src.Link import Link
 from nuxeo.exceptions import HTTPError
+import unicodecsv as csv
+from src.Flags import Exceptions
+import os
+from src.Updater import Updater
 
 
 class Dialect(Item):
 
     def __init__(self, id, name, admin_info, contact_info, descriptions, country, dominant_lang, dominant_lang_fr,
-                 public, region, status, url, grammar_rules, pronunciation, art_status, photo_status, lang_group, lang_fam, change):
+                 public, region, status, url, grammar_rules, pronunciation, art_status, photo_status, lang_group, lang_fam, change, data):
         super().__init__(self, id, name, change=change)
+        self.flags = Exceptions(self)
+        self.Data = data
         self.admin = admin_info  ##
         self.contact = contact_info
         self.description = descriptions
@@ -33,8 +38,8 @@ class Dialect(Item):
         self.url = url
         self.art_status = art_status  ##
         self.photo_status = photo_status  ##
-        self.language_group = Data.legacy_lang_grp[lang_group]
-        self.language_family = Data.legacy_lang_fam[lang_fam]
+        self.language_group = self.Data.legacy_lang_grp[lang_group]
+        self.language_family = self.Data.legacy_lang_fam[lang_fam]
         self.portal = None
         self.legacy_words = []
         self.nuxeo_words = {}
@@ -53,14 +58,17 @@ class Dialect(Item):
         self.nuxeo_categories = {}
         self.dialect_media = []
         self.legacy_media = {}
+        self.unentered_media = 0
         self.nuxeo_imgs = {}
         self.nuxeo_videos = {}
         self.nuxeo_audio = {}
         self.art_gallery = []
         self.photo_gallery = []
         self.legacy_links = []
-        self.legacy_links.append(Link(self, grammar_rules[3], grammar_rules[0], grammar_rules[1], grammar_rules[2], grammar_rules[4], grammar_rules[5], "grammar"))
-        self.legacy_links.append(Link(self, pronunciation[0], pronunciation[1], pronunciation[2], pronunciation[4], pronunciation[3], pronunciation[5], "pronunciation"))
+        if grammar_rules[0] is not None:
+            self.legacy_links.append(Link(self, grammar_rules[3], grammar_rules[0], grammar_rules[1], grammar_rules[2], grammar_rules[4], grammar_rules[5], "grammar"))
+        if pronunciation[1] is not None:
+            self.legacy_links.append(Link(self, pronunciation[0], pronunciation[1], pronunciation[2], pronunciation[4], pronunciation[3], pronunciation[5], "pronunciation"))
         self.nuxeo_links = []
 
     def validate(self):
@@ -82,6 +90,7 @@ class Dialect(Item):
         for cat in self.legacy_categories:
             cat.validate()
         self.portal.validate()
+        self.report()
 
     def dialect_validate(self):
         self.status_validate()
@@ -91,10 +100,10 @@ class Dialect(Item):
         self.validate_text(self.dominant_lang.lower(), "fvdialect:dominant_language")
         self.validate_text(self.country, "fvdialect:country")
         self.validate_text(self.region, "fvdialect:region")
-        self.validate_uid(self.language_family, "fva:language", Data.nuxeo_lang_fam)
-        self.validate_uid(self.language_group, "fva:family", Data.nuxeo_lang_grp)
+        self.validate_uid(self.language_family, "fva:language", self.Data.nuxeo_lang_fam)
+        self.validate_uid(self.language_group, "fva:family", self.Data.nuxeo_lang_grp)
         if self.public:
-            if self.doc.state != "New" and self.doc.state != "Published":
+            if self.doc.state != "New" and self.doc.state != "Published":  # review what to do w these
                 print("~~~ should not be state "+str(self.id))
         else:
             if self.doc.state != "New" and self.doc.state != "Enabled":
@@ -103,7 +112,7 @@ class Dialect(Item):
     def description_validate(self):
         while self.description.count(None) != 0:
             self.description.remove(None)
-        description = " ".join(self.description)
+        description = " ".join(self.description).replace("\r\n", "<br />")
         self.validate_text(description, "dc:description")
 
     def contact_validate(self):
@@ -147,7 +156,7 @@ class Dialect(Item):
                                         ", STATUS_ID, DOMINANT_LANGUAGE_DEFINITION, CHANGE_DTTM "
                                         "FROM FIRSTVOX.WORD_ENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
         for r in word_rows:
-            word = Word(self, r[0], r[1].strip(), r[2], Data.legacy_pos[r[3]], Data.legacy_categories[r[4]], r[5], r[6],
+            word = Word(self, r[0], r[1].strip(), r[2], self.Data.legacy_pos[r[3]], self.Data.legacy_categories[r[4]], r[5], r[6],
                         r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15], r[16], r[17], r[18])
             self.legacy_words.append(word)
             i = 12
@@ -218,16 +227,16 @@ class Dialect(Item):
             p = PhraseBook(self, r[0], r[1].strip(), r[2], r[3])
             self.legacy_phrase_books.append(p)
 
-        for book in Data.categories:
+        for book in self.Data.categories:
             if book.path.startswith(self.doc.path+"/Phrase Books") and book.get("fva:dialect") == self.doc.uid:
                 self.nuxeo_phrase_books[book.get("fvl:import_id")] = book
 
     def get_categories(self):
-        if Data.dialect_categories.get(self.id) is not None:
-            for book in Data.dialect_categories.get(self.id):
+        if self.Data.dialect_categories.get(self.id) is not None:
+            for book in self.Data.dialect_categories.get(self.id):
                 self.legacy_categories.append(Category(self, book[0], book[1], book[3], book[4], book[5], book[6], book[7]))
 
-        for book in Data.categories:
+        for book in self.Data.categories:
             if book.path.startswith(self.doc.path+"/Categories") and book.get("fva:dialect") == self.doc.uid:
                 self.nuxeo_categories[book.get("fvl:import_id")] = book
 
@@ -258,10 +267,10 @@ class Dialect(Item):
 
         rows = self.legacy.execute("SELECT ID, ABORIGINAL_LANGUAGE_TEXT, DOMINANT_LANGUAGE_TEXT, ASSIGNED_USR_ID, "
                                    "DOMINANT_LANGUAGE_TRANSLATION, SENTRY_BOOK_ID, CULTURAL_NOTE, "
-                                   "IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, CHANGE_DTTM "
+                                   "IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, CHANGE_DTTM, SORT_MAP "
                                    "FROM FIRSTVOX.SENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
         for r in rows:
-            entry = BookEntry(self, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10])
+            entry = BookEntry(self, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11])
             self.legacy_book_entries.append(entry)
 
         got_entries = False
@@ -395,4 +404,65 @@ class Dialect(Item):
                 self.nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
 
         self.nuxeo_links = queried_links.get("entries")
+
+    def report(self):
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'.csv'):
+            os.remove(self.title+'.csv')
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'Errors..csv'):
+            os.remove(self.title+'Errors.csv')
+        with open(self.title+'.csv', mode='wb') as overviewfile:
+            csvWriter = csv.writer(overviewfile)
+            csvWriter.writerow(["Type", "Errors", "Number on Legacy Site", "Number on New Site"])
+            csvWriter.writerow(["Alphabet Letters", len(self.flags.LetterErrors), len(self.legacy_letters), len(self.nuxeo_letters.values())])
+            csvWriter.writerow(["Words", len(self.flags.WordErrors), len(self.legacy_words), len(self.nuxeo_words.values())])
+            csvWriter.writerow(["Phrases", len(self.flags.PhraseErrors), len(self.legacy_phrases), len(self.nuxeo_phrases.values())])
+            csvWriter.writerow(["Phrase Books", len(self.flags.PhraseBookErrors), len(self.legacy_phrase_books), len(self.nuxeo_phrase_books.values())])
+            csvWriter.writerow(["Media Files", len(self.flags.AudioErrors)+len(self.flags.VideoErrors)+len(self.flags.ImgErrors), len(self.legacy_media.values()), len(self.dialect_media)])
+            leg_audio = [audio for audio in self.legacy_media.values() if audio.type == 3]
+            leg_video = [vid for vid in self.legacy_media.values() if vid.type == 2]
+            leg_img = [img for img in self.legacy_media.values() if img.type == 1]
+            csvWriter.writerow(["Audio Files", len(self.flags.AudioErrors), len(leg_audio), len(self.nuxeo_audio.values())])
+            csvWriter.writerow(["Video Files", len(self.flags.VideoErrors), len(leg_video), len(self.nuxeo_videos.values())])
+            csvWriter.writerow(["Image Files", len(self.flags.ImgErrors), len(leg_img), len(self.nuxeo_imgs.values())])
+            songs = [book for book in self.legacy_books if book.sstype == 1]
+            stories = [book for book in self.legacy_books if book.sstype == 2]
+            nux_songs = [book for book in self.nuxeo_books.values() if book.get("fvbook:type") == 'song']
+            nux_stories = [book for book in self.nuxeo_books.values() if book.get("fvbook:type") == 'story']  # better way to write this??
+            songs_entry = [entry for entry in self.legacy_book_entries if entry.book.sstype == 1]
+            stories_entry = [entry for entry in self.legacy_book_entries if entry.book.sstype == 2]
+            nux_songs_entry = 0
+            nux_stories_entry = 0
+            for book in nux_songs:
+                nux_songs_entry += len(self.nuxeo.documents.get_children(uid=book.uid))
+            for book in nux_stories:
+                nux_stories_entry += len(self.nuxeo.documents.get_children(uid=book.uid))
+            csvWriter.writerow(["Songs", len(self.flags.SongErrors), len(songs), len(nux_songs)])
+            csvWriter.writerow(["Song Entries", len(self.flags.SongEntryErrors), len(songs_entry), nux_songs_entry])
+            csvWriter.writerow(["Stories", len(self.flags.StoryErrors), len(stories), len(nux_stories)])  # attach entries to each book?
+            csvWriter.writerow(["Story Entries", len(self.flags.StoryEntryErrors), len(stories_entry), nux_stories_entry])
+            csvWriter.writerow(["Resource Links", len(self.flags.LinkErrors), len(self.legacy_links), len(self.nuxeo_links)])
+            csvWriter.writerow(["Private Categories", len(self.flags.CatErrors), len(self.legacy_categories), len(self.nuxeo_categories.values())])
+            csvWriter.writerow(["Portal Page", len(self.flags.PortalErrors)])
+            csvWriter.writerow(["General Errors", len(self.flags.GeneralErrors)])
+
+        with open(self.title+'Errors.csv', mode='wb') as detailfile:  # media files only put as subsection under other types??
+            csvWriter = csv.writer(detailfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Item ID", "Property", "Legacy Value", "New Site Value"])
+            errors = {"Alphabet": self.flags.LetterErrors, "Words": self.flags.WordErrors, "Phrases": self.flags.PhraseErrors,
+                      "Phrase Books": self.flags.PhraseBookErrors, "Audio Files": self.flags.AudioErrors,
+                      "Video Files": self.flags.VideoErrors, "Image Files": self.flags.ImgErrors, "Songs": self.flags.SongErrors,
+                      "Song Entries": self.flags.SongEntryErrors, "Stories": self.flags.StoryErrors,
+                      "Story Entries": self.flags.StoryEntryErrors, "Resource Links": self.flags.LinkErrors,
+                      "Private Categories": self.flags.CatErrors, "Portal Page": self.flags.PortalErrors, "General Errors": self.flags.GeneralErrors}
+            for type in errors:
+                csvWriter.writerow([type, len(errors.get(type))])
+                for error in errors.get(type):
+                    csvWriter.writerow(["", "", error[0], error[1], error[2], error[3], error[4], error[5]])
+
+    def update_dialect(self):
+        updater = Updater()
+        to_be_updated = [self.flags.AudioErrors.pop(self.flags.AudioErrors.index(error)) for error in self.flags.AudioErrors if error[3] in ["Shared"]]
+        to_be_updated += [self.flags.VideoErrors.pop(self.flags.VideoErrors.index(error)) for error in self.flags.VideoErrors if error[3] in ["Shared"]]
+        to_be_updated += [self.flags.ImgErrors.pop(self.flags.ImgErrors.index(error)) for error in self.flags.ImgErrors if error[3] in ["Shared"]]
+        # updater.update_property(self, doc, nuxeo_str, value)
 

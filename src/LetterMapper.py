@@ -12,7 +12,7 @@ class LetterMapper:
                         "Č": "Č", "ṉ": "ṉ", "ḵ̕": "ḵ̕", "ō": "ō", "ḿ": "ḿ", "ü": "ü", "ǜ": "ǜ", "ę": "ę", "è": "è",
                         "ǟ": "ǟ", "ì": "ì", "Á": "Á", "ā": "ā", "Ń": "Ń", "ū": "ū", "À": "À", "ǹ": "ǹ", "ǒ": "ǒ",
                         "Ì": "Ì", "Ą": "Ą", "ǎ": "ǎ", "ô": "ô", "ạ": "ạ", "ą̄": "ą̄", "Ǫ": "Ǫ", "'": "’", "’": "'",
-                        "\"": "'"}
+                        '"': "'", "ï": "ï"}
 
     def compare(self, legacy_word, nuxeo_word):
         for letter in nuxeo_word:
@@ -23,6 +23,7 @@ class LetterMapper:
                         nuxeo_word = nuxeo_word.replace(item, letter)
                 else:
                     legacy_word = legacy_word.replace(self.letters[letter], letter)
+                    nuxeo_word = nuxeo_word.replace(self.letters[letter], letter)
         if legacy_word == nuxeo_word:
             return True
         return False

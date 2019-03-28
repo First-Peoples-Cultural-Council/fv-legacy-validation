@@ -4,7 +4,8 @@ from src.Text import Text
 class BookEntry(Text):
 
     def __init__(self, dialect, entry_id, title, definition, user, translation, book_id, cultural_note, image_id,
-                 audio_id, video_id, change):
+                 audio_id, video_id, change, order):
+        self.order = order
         for book in dialect.legacy_books:
             if book.id == book_id:
                 self.book = book
@@ -15,7 +16,14 @@ class BookEntry(Text):
 
     def validate(self):
         self.doc = self.dialect.nuxeo_book_entries.get(self.id)
-        super().validate()
+        if super().validate():
+            self.order_validate()
 
     def definition_validate(self):
-        self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
+        if self.definition:
+            self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
+        else:
+            self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
+
+    def order_validate(self):
+        self.validate_int(self.order, "fvbookentry:sort_map")

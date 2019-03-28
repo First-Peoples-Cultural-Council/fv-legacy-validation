@@ -1,7 +1,7 @@
 from src.Item import Item
 from src.MediaFile import UnEnteredMediaFile
+from src.LetterMapper import LetterMapper
 import re
-from src.NuxeoData import Data
 
 
 class Portal(Item):
@@ -10,12 +10,12 @@ class Portal(Item):
         super().__init__(dialect, dialect.id, "Portal")
         self.about = [portal_info[2], portal_info[0], portal_info[1]]
         self.greeting = portal_info[3]
-        self.column_title = portal_info[4]  ##
-        self.column_text = portal_info[5]  ##
+        self.column_title = portal_info[4]
+        self.column_text = portal_info[5]
         self.people_name = portal_info[6]
         self.related_links = portal_info[7]
         self.status = portal_info[8]
-        self.theme = Data.legacy_themes.get(portal_info[9])
+        self.theme = self.dialect.Data.legacy_themes.get(portal_info[9])
         self.first_words = first_words
         self.image = image
         self.audio = audio
@@ -40,19 +40,15 @@ class Portal(Item):
             self.about.remove(None)
 
         #if self.people_name is not None:
-        #    portal_about = '<p><strong>About The '+self.people_name+' people</strong></p><p>'+portal_about
+        #    portal_about = '<p><strong>About The '+self.people_name+' people</strong></p><p>'+portal_about  # review, maybe add back??
         # self.validate_text(portal_about, "fv-portal:about")
         # portal_about = self.html_strip(portal_about).strip()
-        if len(self.about) == 0 and self.doc.get("fv-portal:about")  is None:
+        if len(self.about) == 0 and self.doc.get("fv-portal:about") is None:
             return True
-        if len(self.about) == 0 or self.doc.get("fv-portal:about")  is None:
+        if len(self.about) == 0 or self.doc.get("fv-portal:about") is None:
             return False
         portal_about = " ".join(self.about)
-        nuxeo_about = self.doc.get("fv-portal:about").replace("<br />", "")  # self.html_strip(self.doc.get("fv-portal:about")).strip()
-        if portal_about != nuxeo_about:
-            print(portal_about)
-            print(nuxeo_about)
-            print("diff "+str(self.id))
+        self.validate_text(portal_about, "fv-portal:about")
 
     def first_words_validate(self):  # check order too
         doc_ids = []
@@ -78,7 +74,7 @@ class Portal(Item):
     def media_validate(self):
         if self.image[0] == 'pixel.gif':
             self.image[0] = '/pixel.gif'
-        self._media_validate(self.image[0], "fv-portal:logo", self.image[1], self.image[3], self.image[2], 1, self.image[4]) # check is right property ! !
+        self._media_validate(self.image[0], "fv-portal:logo", self.image[1], self.image[3], self.image[2], 1, self.image[4])
         self._media_validate(self.audio[0], "fv-portal:featured_audio", self.audio[1], self.audio[3], self.audio[2], 3, self.audio[4])
         if self.theme is None:
             self._media_validate(self.theme, "fv-portal:background_bottom_image", None, None, None, 1, 1)

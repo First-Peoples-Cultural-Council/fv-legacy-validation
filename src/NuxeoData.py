@@ -5,101 +5,99 @@ import re
 
 
 class Data:
-    nuxeo = Authorize.nuxeo
-    legacy = Authorize.cursor
-    dialect_categories = {}
-    legacy_categories = {}
-    legacy_pos = {}
-    categories = []
-    all_categories = {}
-    shared_categories = {}
-    private_categories = {}
-    nuxeo_lang_fam = []
-    legacy_lang_fam = {}
-    nuxeo_lang_grp = []
-    legacy_lang_grp = {}
-    legacy_themes = {}
 
-    rows = legacy.execute("select ID, NAME, BACKGROUND_BOTTOM_FILENAME, BACKGROUND_TOP_FILENAME, PREVIEW_IMAGE_FILENAME"
-                          " from FIRSTVOX.THEME")
-    for r in rows:
-        legacy_themes[r[0]] = r
+    def __init__(self):
+        nuxeo = Authorize.nuxeo
+        legacy = Authorize.cursor
+        self.dialect_categories = {}
+        self.legacy_categories = {}
+        self.legacy_pos = {}
+        self.categories = []
+        self.all_categories = {}
+        self.shared_categories = {}
+        self.private_categories = {}
+        self.nuxeo_lang_fam = []
+        self.legacy_lang_fam = {}
+        self.nuxeo_lang_grp = []
+        self.legacy_lang_grp = {}
+        self.legacy_themes = {}
 
-    rows = legacy.execute("select ID, CODE, DICTIONARY_ID, IS_PRIVATE, PARENT_CATEGORY, CODEFR, IMAGE_FILENAME, "
-                          "CHANGE_DTTM from FIRSTVOX.WORD_CATEGORY")
-    for r in rows:
-        legacy_categories[r[0]] = re.sub('[/()\- ]+', "_", r[1]).lower().strip("_")
-        if r[2] is not None:
-            if dialect_categories.get(r[2]):
-                dialect_categories[r[2]] = dialect_categories.get(r[2]).append(r)
-            else: dialect_categories[r[2]] = [r]
+        rows = legacy.execute("select ID, NAME, BACKGROUND_BOTTOM_FILENAME, BACKGROUND_TOP_FILENAME, PREVIEW_IMAGE_FILENAME"
+                              " from FIRSTVOX.THEME")
+        for r in rows:
+            self.legacy_themes[r[0]] = r
 
-    rows = legacy.execute("select ID, CODE from FIRSTVOX.PART_OF_SPEECH")
-    for r in rows:
-        legacy_pos[r[0]] = re.sub('[/()\- ]+', "_", r[1]).lower().strip("_")
+        rows = legacy.execute("select ID, CODE, DICTIONARY_ID, IS_PRIVATE, PARENT_CATEGORY, CODEFR, IMAGE_FILENAME, "
+                              "CHANGE_DTTM from FIRSTVOX.WORD_CATEGORY")
+        for r in rows:
+            self.legacy_categories[r[0]] = re.sub('[/()\- ]+', "_", r[1]).lower().strip("_")
+            if r[2] is not None:
+                if self.dialect_categories.get(r[2]):
+                    self.dialect_categories[r[2]] = self.dialect_categories.get(r[2]).append(r)
+                else: self.dialect_categories[r[2]] = [r]
 
-    get_categories = False
-    while not get_categories:
-        try:
-            category = nuxeo.documents.query(opts={'query': "SELECT * FROM FVCategory WHERE ecm:path STARTSWITH"
-                                                    " '/FV/Workspaces/SharedData/Shared Categories'"})
-            get_categories = True
-        except HTTPError:
-            nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+        rows = legacy.execute("select ID, CODE from FIRSTVOX.PART_OF_SPEECH")
+        for r in rows:
+            self.legacy_pos[r[0]] = re.sub('[/()\- ]+', "_", r[1]).lower().strip("_")
 
-    entries = category.get("entries")
-    for item in entries:
-        categories.append(item)
-        shared_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
-        all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+        get_categories = False
+        while not get_categories:
+            try:
+                category = nuxeo.documents.query(opts={'query': "SELECT * FROM FVCategory WHERE ecm:path STARTSWITH"
+                                                        " '/FV/Workspaces/SharedData/Shared Categories'"})
+                get_categories = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
 
-    get_categories = False
-    while not get_categories:
-        try:
-            category = nuxeo.documents.query(opts={'query': "SELECT * FROM FVCategory WHERE ecm:path STARTSWITH"
-                                                   " '/FV/Workspaces/Data' "})
-            get_categories = True
-        except HTTPError:
-            nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+        entries = category.get("entries")
+        for item in entries:
+            self.categories.append(item)
+            self.shared_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+            self.all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
 
-    entries = category.get("entries")
-    for item in entries:
-        categories.append(item)
-        private_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
-        all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+        get_categories = False
+        while not get_categories:
+            try:
+                category = nuxeo.documents.query(opts={'query': "SELECT * FROM FVCategory WHERE ecm:path STARTSWITH"
+                                                       " '/FV/Workspaces/Data' "})
+                get_categories = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
 
-    rows = legacy.execute("select ID, NAME "
-                          "from FIRSTVOX.DICTIONARY_FAMILY")
-    for r in rows:
-        legacy_lang_fam[r[0]] = r[1]
+        entries = category.get("entries")
+        for item in entries:
+            self.categories.append(item)
+            self.private_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+            self.all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
 
-    get_lang_fam = False
-    while not get_lang_fam:
-        try:
-            families = nuxeo.documents.query(opts={'query': "SELECT * FROM FVLanguage WHERE ecm:path STARTSWITH"
-                                                            " '/FV/Workspaces/Data' "})
-            get_lang_fam = True
-        except HTTPError:
-            nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+        rows = legacy.execute("select ID, NAME "
+                              "from FIRSTVOX.DICTIONARY_FAMILY")
+        for r in rows:
+            self.legacy_lang_fam[r[0]] = r[1]
 
-    entries = families.get("entries")
-    for item in entries:
-        nuxeo_lang_fam.append(item)
+        get_lang_fam = False
+        while not get_lang_fam:
+            try:
+                families = nuxeo.documents.query(opts={'query': "SELECT * FROM FVLanguage WHERE ecm:path STARTSWITH"
+                                                                " '/FV/Workspaces/Data' "})
+                get_lang_fam = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
 
-    rows = legacy.execute("select ID, DESCR "
-                          "from FIRSTVOX.LANGUAGE_GROUP")
-    for r in rows:
-        legacy_lang_grp[r[0]] = r[1]
+        self.nuxeo_lang_fam = families.get("entries")
 
-    get_lang_grp = False
-    while not get_lang_grp:
-        try:
-            groups = nuxeo.documents.query(opts={'query': "SELECT * FROM FVLanguageFamily WHERE ecm:path STARTSWITH"
-                                                            " '/FV/Workspaces/Data' "})
-            get_lang_grp = True
-        except HTTPError:
-            nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+        rows = legacy.execute("select ID, DESCR "
+                              "from FIRSTVOX.LANGUAGE_GROUP")
+        for r in rows:
+            self.legacy_lang_grp[r[0]] = r[1]
 
-    entries = groups.get("entries")
-    for item in entries:
-        nuxeo_lang_grp.append(item)
+        get_lang_grp = False
+        while not get_lang_grp:
+            try:
+                groups = nuxeo.documents.query(opts={'query': "SELECT * FROM FVLanguageFamily WHERE ecm:path STARTSWITH"
+                                                                " '/FV/Workspaces/Data' "})
+                get_lang_grp = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+
+        self.nuxeo_lang_grp = groups.get("entries")

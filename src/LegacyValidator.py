@@ -3,6 +3,7 @@
 from src.Portal import Portal
 from src.authorization import Authorize
 from src.Dialect import Dialect
+from src.NuxeoData import Data
 
 
 class LegacyValidator:
@@ -10,8 +11,9 @@ class LegacyValidator:
     def __init__(self):
         nuxeo = Authorize.nuxeo
         cur = Authorize.cursor
+        data = Data()
 
-        dialects = self.get_dialects_test(cur)
+        dialects = self.get_dialects_test(cur, data)
         # missing = [145, 401, 403, 185, 406]
         # for dialect in dialects:
         #     if dialect.id not in missing:
@@ -57,16 +59,16 @@ class LegacyValidator:
             dialect.portal = portal
         return dialects
 
-    def get_dialects_test(self, db):
+    def get_dialects_test(self, db, data):
         dialects = []
-        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY")
+        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY ORDER BY ID DESC")
 
         for r in entries:
             dialects.append(r[0])
         for temp_id in dialects:
 
             entries = db.execute("SELECT ID, NAME, ADMIN_EMAIL_ADDRESS, ADMIN_FIRST_NAME, ADMIN_LAST_NAME, "  # 0-4
-                            "ADMIN_PHONE_NUMBER, CHANGE_DTTM, CONTACT_INFORMATION"  # 5-7      maybe just get rid of char grid text one, only 306 uses it, unsure where it maps to
+                            "ADMIN_PHONE_NUMBER, CHANGE_DTTM, CONTACT_INFORMATION"  # 5-7  char grid text one, only 306 uses it, doesn't maps to anything
                          ", CONTACT_INFORMATION2, CONTACT_INFORMATION3, CONTACT_INFORMATION4, COUNTRY_ID, DESCR, "  # 8-12
                          "DESCR2, DESCR3, DESCR4, DOMINANT_LANGUAGE, DOMINANT_LANGUAGE_FR, FIRST_WORD_ONE_ID, "  # 13-18
                          "FIRST_WORD_TWO_ID, FIRST_WORD_THREE_ID, FIRST_WORD_FOUR_ID, FIRST_WORD_FIVE_ID, "  # 19-22
@@ -93,7 +95,7 @@ class LegacyValidator:
                 portal_info = [r[36], r[37], r[38], r[41], r[42], r[43], r[44], r[45], r[46], r[47]]
                 pronunciation = [r[48], r[49], r[50], r[51], r[52], r[53]]
                 sound = [r[58], r[59], r[60], r[61], r[62]]
-                dialect = Dialect(r[0], r[1], admin_info, contact_info, descriptions, r[11], r[16], r[17], r[54], r[55], r[64], r[65], grammar_rules, pronunciation, r[39], r[40], r[34], r[35], r[6])
+                dialect = Dialect(r[0], r[1], admin_info, contact_info, descriptions, r[11], r[16], r[17], r[54], r[55], r[64], r[65], grammar_rules, pronunciation, r[39], r[40], r[34], r[35], r[6], data)
                 portal = Portal(dialect, portal_info, first_words, image, sound, r[56], r[57])
                 dialect.portal = portal
                 missing = [145, 401, 403, 185, 406]

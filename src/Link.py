@@ -24,6 +24,7 @@ class Link(Item):
 
     def file_validate(self):
         if not self.exists("https://preprod.firstvoices.com/nuxeo/nxfile/default/"+str(self.doc.uid)+"/file:content/"+self.title):
+            self.dialect.flags.fileMissing(self)
             print(self.title)
             print(self.doc.uid)
             print("link not found ?? " +self.doc.uid)

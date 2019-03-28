@@ -29,6 +29,7 @@ class MediaFile(Item):
 
     def file_validate(self):
         if not self.exists("https://preprod.firstvoices.com/nuxeo/nxfile/default/"+str(self.doc.uid)+"/file:content/"+self.title):
+            self.dialect.flags.fileMissing(self)
             print(self.title)
             print(self.doc.uid)
             print("file not found ?? " + self.doc.uid)
@@ -41,6 +42,7 @@ class UnEnteredMediaFile(MediaFile):
 
     def __init__(self, dialect, filename, description, contributor, recorder, type_id, status):
         super().__init__(dialect, None, filename, description, None, contributor, recorder, type_id, 0, status)
+        self.dialect.unentered_media +=1
 
     def validate(self):
         types = {1: self.dialect.nuxeo_imgs, 2: self.dialect.nuxeo_videos, 3: self.dialect.nuxeo_audio}
@@ -56,6 +58,9 @@ class UnEnteredMediaFile(MediaFile):
             self.validate_text(self.description, "dc:description")
             self.contributor_validate(self.contributor, "fvm:source")
             self.status_validate()
+        else:
+            print("!!" + self.title)
+            print(len(types[self.type].values()))
 
 
 class GalleryMediaFile(MediaFile):

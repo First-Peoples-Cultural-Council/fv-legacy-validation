@@ -33,6 +33,7 @@ class Item:
                 self.change_validate()
                 return True
         else:
+            self.dialect.flags.itemNotFound(self)
             print("++++")
             print(str(self.__class__) + str(self.id))
             return False
@@ -41,7 +42,10 @@ class Item:
         if legacy_name is None and self.doc.get(nuxeo_str) is None:
             return True
         if legacy_name is None or self.doc.get(nuxeo_str) is None:
-            return False  # update nuxeo_str value to match legacy_name
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
+            return False
+        if self.doc.get(nuxeo_str).count("<br />") != 0:
+            legacy_name = legacy_name.replace("\r\n", "<br />")
         if not isinstance(legacy_name, str):
             for name in legacy_name:
                 if name.strip() not in self.doc.get(nuxeo_str):
@@ -51,66 +55,89 @@ class Item:
                             match = True
                             break
                     if not match:
+                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))  # update these names
                         print(name.strip())
                         print(self.doc.get(nuxeo_str))
                         print(str(self.__class__) + str(self.id))
-        elif self.html_strip(legacy_name).strip() == self.html_strip(self.doc.get(nuxeo_str).strip()):
+                        return False
+        elif legacy_name.strip() == self.doc.get(nuxeo_str).strip():
             return True
-        elif not LetterMapper().compare(legacy_name.strip(), self.doc.get(nuxeo_str).strip().replace("<br />", "")):
+        elif not LetterMapper().compare(legacy_name.strip(), self.doc.get(nuxeo_str).strip()):
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
             print(legacy_name.strip())
             print(self.doc.get(nuxeo_str).strip())
             print(str(self.__class__) + str(self.id))
+            return False
 
     def validate_int(self, legacy_name, nuxeo_str):
         if legacy_name is None and self.doc.get(nuxeo_str) is None:
             return True
         if legacy_name is None or self.doc.get(nuxeo_str) is None:
-            return False  # update nuxeo_str value to match legacy_name
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
         if legacy_name == self.doc.get(nuxeo_str):
             return True
+        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
         print(legacy_name)
         print(self.doc.get(nuxeo_str))
         print(str(self.__class__) + str(self.id))
+        return False
 
     def validate_translation(self, legacy_def, nuxeo_str):
         definitions = self.doc.get(nuxeo_str)
         if legacy_def is None and len(definitions) == 0:
             return True
         if legacy_def is None or len(definitions) == 0:
-            return False  # update definitions to match legacy_def
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, self.doc.get(nuxeo_str))
+            return False
         if legacy_def != definitions[0]['translation']:
             if not LetterMapper().compare(legacy_def, definitions[0]['translation']):
+                self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, definitions[0]['translation'])
                 print(legacy_def)
                 print(definitions[0]['translation'])
-                print("text defs don't match")  # update definitions
+                print("text defs don't match")
                 print(str(self.__class__) + str(self.id))
+                return False
 
     def validate_uid(self, legacy_name, nuxeo_str, nuxeo_docs):
-        if legacy_name is None and self.doc.get(nuxeo_str) is None:
+        if legacy_name is None and self.doc.get(nuxeo_str) is None or legacy_name is None and len(self.doc.get(nuxeo_str)) == 0:
             return True
-        if legacy_name is None or self.doc.get(nuxeo_str) is None:
-            return False  # update nuxeo_str
-        if legacy_name is None and len(self.doc.get(nuxeo_str)) == 0:
-            return True
-        if legacy_name is None or len(self.doc.get(nuxeo_str)) == 0:
-            return False  # update nuxeo_str
+        if self.doc.get(nuxeo_str) is None or len(self.doc.get(nuxeo_str)) == 0:
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
+            return False
         nuxeo_titles = []
-        for uid in self.doc.get(nuxeo_str):
+        if not isinstance(self.doc.get(nuxeo_str), str):
+            for uid in self.doc.get(nuxeo_str):
+                for doc in nuxeo_docs:
+                    if doc.uid == uid:
+                        nuxeo_titles.append(doc.get("dc:title").strip())
+                        break
+        else:
+            if legacy_name == 'B_E_Welcome.mp3':
+                print('isss str')
+                print(self.doc.get(nuxeo_str))
+            uid = self.doc.get(nuxeo_str)
             for doc in nuxeo_docs:
                 if doc.uid == uid:
                     nuxeo_titles.append(doc.get("dc:title").strip())
                     break
+        if legacy_name is None:
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
+            return False
         if not isinstance(legacy_name, str):
             for name in legacy_name:
                 if name not in nuxeo_titles:
-                    print(legacy_name)  # update fv:source, create new FVContributor
+                    self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
+                    print(legacy_name)
                     print(nuxeo_titles)
                     print(str(self.__class__) + str(self.id))
+                    return False
         else:
             if legacy_name not in nuxeo_titles:
-                print(legacy_name)  # update fv:source, create new FVContributor
+                self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
+                print(legacy_name)
                 print(nuxeo_titles)
                 print(str(self.__class__) + str(self.id))
+                return False
 
     def title_validate(self):
         self.validate_text(self.title, "dc:title")
@@ -122,8 +149,10 @@ class Item:
         if legacy_contributor is None and len(self.doc.get(nuxeo_str)) == 0:
             return True
         if legacy_contributor is None or len(self.doc.get(nuxeo_str)) == 0:
-            return False  # update fv:source
-        contributors = re.split("^[^(https:\/\/)](.*)(?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Culture)|(historian)|(mentor)|(Hand)|(Media)))", legacy_contributor, re.IGNORECASE)
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, self.doc.get(nuxeo_str))
+            return False
+        contributors = re.split("^[^(https:\/\/)](.*)(?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Culture)|(historian)|(mentor)|(Hand)|(Media)|(Elder)))", legacy_contributor, re.IGNORECASE)
+        contributors = [con for con in contributors if con in [",", "/", "", " and ", " & "]]
         sources = []
         for source in self.doc.get(nuxeo_str):
             for c in self.dialect.nuxeo_contributors:
@@ -131,10 +160,18 @@ class Item:
                     sources.append(c.title.strip())
                     break
         for con in contributors:
-            if con is not None and con not in [",", "/", "", " and ", " & "] and con.strip() not in sources:
-                print(con)  # maybe add letter mapping for false,
-                print(sources)   # update fv:source, create new FVContributor
-                print(self.id)
+            if con.strip() not in sources:
+                match = False
+                for s in sources:
+                    if LetterMapper().compare(con.strip(), s.strip()):
+                        match = True
+                        break
+                if not match:
+                    self.dialect.flags.dataMismatch(self, nuxeo_str, contributors, sources)
+                    print(contributors)
+                    print(sources)
+                    print(self.id)
+                    return False
 
     def status_validate(self):  # what property shows whether public or not ?
         # status_code = {1: "Enabled", 2: "Disabled", 3: "Deleted", 4: "None", 0: "New"}
@@ -145,7 +182,7 @@ class Item:
         #     print("~~~ should not be state "+str(self.__class__)+str(self.id))
 
     def change_validate(self):
-        self.validate_text(str(self.change), "fvl:change_date")
+        self.validate_text(str(self.change)[2:10], "fvl:change_date")
 
     def exists(self, path):
         connect = requests.head(path)
