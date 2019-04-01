@@ -61,7 +61,7 @@ class LegacyValidator:
 
     def get_dialects_test(self, db, data):
         dialects = []
-        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY ORDER BY ID DESC")
+        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY ORDER BY ID ASC")
 
         for r in entries:
             dialects.append(r[0])
@@ -103,7 +103,7 @@ class LegacyValidator:
                     dialect.get_attributes()
                     dialect.validate()
                     dialect.report()
-                    dialect.update_dialect()
+                    # dialect.update_dialect()
                     print("********************")
                     print("********************")
                     print(str(dialect.id)+" "+dialect.title+" is complete")
@@ -113,7 +113,7 @@ class LegacyValidator:
                 else:
                     print("********************")
                     print("********************")
-                    print(dialect.id+" "+dialect.title+" is MISSING")
+                    print(str(dialect.id)+" "+dialect.title+" is MISSING")
                     print("********************")
                     print("********************")
     # def get_words(self):

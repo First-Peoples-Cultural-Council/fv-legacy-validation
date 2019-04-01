@@ -148,8 +148,6 @@ class Exceptions:
     def toUpdate(self, item_class, doc, title, item_id, nuxeo_str, expected, actual):
         if nuxeo_str in self.update_names:
             self.update.append([doc, title, self.property_name[nuxeo_str], item_id, doc.uid, nuxeo_str, expected, actual])
-            print([doc, title, self.property_name[nuxeo_str], item_id, doc.uid, nuxeo_str, expected, actual])
-            print(self.update)
             return True
         return False
 

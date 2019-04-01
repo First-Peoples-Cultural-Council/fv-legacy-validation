@@ -1,7 +1,6 @@
 from nuxeo.client import Nuxeo
 from src.BookEntry import BookEntry
 from src.Category import Category, PhraseBook
-from src.Gallery import Gallery
 from src.Letter import Letter
 from src.MediaFile import MediaFile, GalleryMediaFile
 from src.Portal import Portal
@@ -15,6 +14,7 @@ from nuxeo.exceptions import HTTPError
 import unicodecsv as csv
 from src.Flags import Exceptions
 import os
+import re
 from src.Updater import Updater
 
 
@@ -394,16 +394,12 @@ class Dialect(Item):
             image = GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "art", r[10])
             self.art_gallery.append(image)
 
-        Gallery(self, self.art_gallery, "srt")
-
         rows = self.legacy.execute("SELECT ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
                                    "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM "
                                    "FROM FIRSTVOX.PHOTO_ALBUM_ENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
         for r in rows:
             image = GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "photo", r[10])
             self.photo_gallery.append(image)
-
-        Gallery(self, self.photo_gallery, "photo")
 
     def get_links(self):
         rows = self.legacy.execute("SELECT INSTRUCTIONS_MEDIA_FILENAME, INSTRUCTIONS_DESCRIPTION, "
@@ -549,14 +545,76 @@ class Dialect(Item):
             for type in errors:
                 csvWriter.writerow([type, len(errors.get(type)[1])])
                 for error in errors.get(type)[1]:
-                    csvWriter.writerow(["", "", type+error[0], error[1], error[2], error[3], error[4]])
+                    csvWriter.writerow(["", "", type[:len(type-1)]+error[0], error[1], error[2], error[3], error[4]])
 
-    def update_dialect(self):  # shared, galleries, change date, childrens
-        updater = Updater()
+    def update_dialect(self):  # updater.update_property(doc, nuxeo_str, value)
         for error in self.flags.update:
-            # updater.update_property(error[1], error[6], error[7])
-            print(error[1]+" "+error[2]+" "+error[3]+" "+error[4]+" "+error[5]+" "+error[6]+" "+error[7])
-        # updater.update_property(doc, nuxeo_str, value)
+            Updater().update_property(error[1], error[6], error[7])
+            print(str(error[1])+" "+str(error[2])+" "+str(error[3])+" "+str(error[4])+" "+str(error[5])+" "+str(error[6])+" "+str(error[7]))
+
+    def create_galleries(self):  # create_doc( path, name, type, properties), properties must have dc:title
+        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife))))"
+        updater = Updater()
+        if self.art_gallery:
+            related_pics = []
+            for pic in self.art_gallery:
+                source = []
+                recorder = []
+                change = None
+                if pic.change:
+                    change = str(pic.change)[2:10]
+                if pic.recorder:
+                    recs = re.split(match, pic.recorder, re.IGNORECASE)
+                    recs = [con for con in recs if con not in [",", "/", "", " and ", " & "] and con is not None]
+                    for name in recs:
+                        rec = updater.create_doc(self.doc.path+"/Contributors/", name, "FVContributor", {'dc:title': name})
+                        recorder.append(rec.uid)
+                if pic.contributor:
+                    cons = re.split(match, pic.recorder, re.IGNORECASE)
+                    cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
+                    for name in cons:
+                        con = updater.create_doc(self.doc.path+"/Contributors/", pic.contributor, "FVContributor", {'dc:title': pic.contributor})
+                        source.append(con.uid)
+
+                pic_properties = {'dc:title': pic.title, "fvm:source": source, "fvm:recorder": recorder, "dc:description": pic.description,
+                                  "fvl:import_id": pic.id, "fvl:change_date": change, "fvl:status_id": pic.status}
+                pic = updater.create_doc(self.doc.path+"/Resources/", pic.title, "FVPicture", pic_properties)
+                related_pics.append(pic.uid)
+
+            art_gal = updater.create_doc(self.doc.path+"/Portal/", "Art Gallery", "FVGallery", {'dc:title': "Art Gallery",
+                                                                                                "fv:related_pictures": related_pics})
+
+        if self.photo_gallery:
+            related_pics = []
+            for pic in self.photo_gallery:
+                source = []
+                recorder = []
+                change = None
+                if pic.change:
+                    change = str(pic.change)[2:10]
+                if pic.recorder:
+                    recs = re.split(match, pic.recorder, re.IGNORECASE)
+                    recs = [con for con in recs if con not in [",", "/", "", " and ", " & "] and con is not None]
+                    for name in recs:
+                        rec = updater.create_doc(self.doc.path+"/Contributors/", name, "FVContributor", {'dc:title': name})
+                        recorder.append(rec.uid)
+                if pic.contributor:
+                    cons = re.split(match, pic.recorder, re.IGNORECASE)
+                    cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
+                    for name in cons:
+                        con = updater.create_doc(self.doc.path+"/Contributors/", pic.contributor, "FVContributor", {'dc:title': pic.contributor})
+                        source.append(con.uid)
+
+                pic_properties = {'dc:title': pic.title, "fvm:source": source, "fvm:recorder": recorder, "dc:description": pic.description,
+                                  "fvl:import_id": pic.id, "fvl:change_date": change, "fvl:status_id": pic.status}
+                pic = updater.create_doc(self.doc.path+"/Resources/", pic.title, "FVPicture", pic_properties)
+                related_pics.append(pic.uid)
+
+            photo_gal = updater.create_doc(self.doc.path+"/Portal/", "Photo Gallery", "FVGallery", {'dc:title': "Photo Gallery",
+                                                                                                "fv:related_pictures": related_pics})
+                # how to update state, create not published
 
 
-
+# ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
+#     "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM
+# GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "art", r[10])
