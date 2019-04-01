@@ -2,6 +2,7 @@ from src.authorization import Authorize
 from src.LetterMapper import LetterMapper
 import re
 import requests
+import calendar
 
 
 class Item:
@@ -27,6 +28,7 @@ class Item:
 
     def validate(self):
         if self.doc is not None:
+            self.quality_check()
             if self.check_last_modified():
                 self.title_validate()
                 self.user_validate()
@@ -39,9 +41,9 @@ class Item:
             return False
 
     def validate_text(self, legacy_name, nuxeo_str):
-        if legacy_name is None and self.doc.get(nuxeo_str) is None:
+        if not legacy_name and not self.doc.get(nuxeo_str):
             return True
-        if legacy_name is None or self.doc.get(nuxeo_str) is None:
+        if not legacy_name or not self.doc.get(nuxeo_str):
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
             return False
         if self.doc.get(nuxeo_str).count("<br />") != 0:
@@ -55,7 +57,7 @@ class Item:
                             match = True
                             break
                     if not match:
-                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))  # update these names
+                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
                         print(name.strip())
                         print(self.doc.get(nuxeo_str))
                         print(str(self.__class__) + str(self.id))
@@ -74,6 +76,7 @@ class Item:
             return True
         if legacy_name is None or self.doc.get(nuxeo_str) is None:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
+            return False
         if legacy_name == self.doc.get(nuxeo_str):
             return True
         self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
@@ -86,9 +89,14 @@ class Item:
         definitions = self.doc.get(nuxeo_str)
         if legacy_def is None and len(definitions) == 0:
             return True
-        if legacy_def is None or len(definitions) == 0:
-            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, self.doc.get(nuxeo_str))
+        if len(definitions) == 0:
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, None)
             return False
+        if legacy_def is None:
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, definitions[0]['translation'])
+            return False
+        if definitions[0]['translation'].count("<br />") != 0:
+            legacy_def = legacy_def.replace("\r\n", "<br />")
         if legacy_def != definitions[0]['translation']:
             if not LetterMapper().compare(legacy_def, definitions[0]['translation']):
                 self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, definitions[0]['translation'])
@@ -99,9 +107,9 @@ class Item:
                 return False
 
     def validate_uid(self, legacy_name, nuxeo_str, nuxeo_docs):
-        if legacy_name is None and self.doc.get(nuxeo_str) is None or legacy_name is None and len(self.doc.get(nuxeo_str)) == 0:
+        if not legacy_name and not self.doc.get(nuxeo_str):
             return True
-        if self.doc.get(nuxeo_str) is None or len(self.doc.get(nuxeo_str)) == 0:
+        if not self.doc.get(nuxeo_str):
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
             return False
         nuxeo_titles = []
@@ -146,19 +154,23 @@ class Item:
         self.validate_int(self.user, "fvl:assigned_usr_id")
 
     def contributor_validate(self, legacy_contributor, nuxeo_str):  # remove old multiple ppl contributors
-        if legacy_contributor is None and len(self.doc.get(nuxeo_str)) == 0:
+        if not legacy_contributor and len(self.doc.get(nuxeo_str)) == 0:
             return True
-        if legacy_contributor is None or len(self.doc.get(nuxeo_str)) == 0:
+        if len(self.doc.get(nuxeo_str)) == 0:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, self.doc.get(nuxeo_str))
             return False
-        contributors = re.split("^[^(https:\/\/)](.*)(?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Culture)|(historian)|(mentor)|(Hand)|(Media)|(Elder)))", legacy_contributor, re.IGNORECASE)
-        contributors = [con for con in contributors if con in [",", "/", "", " and ", " & "]]
         sources = []
         for source in self.doc.get(nuxeo_str):
             for c in self.dialect.nuxeo_contributors:
                 if c.uid == source:
                     sources.append(c.title.strip())
                     break
+        if not legacy_contributor:
+            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, sources)
+            return False
+        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife))))"
+        contributors = re.split(match, legacy_contributor, re.IGNORECASE)
+        contributors = [con for con in contributors if con not in [",", "/", "", " and ", " & "] and con is not None]
         for con in contributors:
             if con.strip() not in sources:
                 match = False
@@ -182,7 +194,23 @@ class Item:
         #     print("~~~ should not be state "+str(self.__class__)+str(self.id))
 
     def change_validate(self):
+        if not self.change:
+            self.validate_text(self.change, "fvl:change_date")
+            return
+        # match = re.search("^(\d\d)-(\w{3})-\d{2}(\d{2}).*", str(self.change))
+        # if match:
+        #     date = str(match.group(3))+"-"+str(list(calendar.month_abbr).index(match.group(2)))+"-"+str(match.group(1))
+        #     print("hand made date !!!")
+        #     print(match.groups())
+        #     print(date)
+        #     self.validate_text(date, "fvl:change_date")
+        # else:
         self.validate_text(str(self.change)[2:10], "fvl:change_date")
+
+    def quality_check(self):
+        # if not self.title:
+        #     self.dialect.flags.missingData(self, "dc:title")
+        pass
 
     def exists(self, path):
         connect = requests.head(path)

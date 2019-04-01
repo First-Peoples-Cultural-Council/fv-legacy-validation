@@ -6,7 +6,7 @@ class Book(Text):
 
     def __init__(self, dialect, book_id, title, definition, user, contributor, cultural_note, reference, image_id,
                  audio_id, video_id, children_archive, status, intro, intro_def, author, author_ref, contributor_ref,
-                 translation, sstype, change):
+                 translation, sstype, change, order):
         Text.__init__(self, dialect, book_id, title, definition, user, contributor, cultural_note, reference, image_id,
                       audio_id, video_id, children_archive, status, translation, change)
         self.intro = intro
@@ -15,6 +15,7 @@ class Book(Text):
         self.author_ref = author_ref  ##
         self.contributor_ref = contributor_ref  ##
         self.sstype = sstype
+        self.order = order
 
     def validate(self):
         self.doc = self.dialect.nuxeo_books.get(self.id)
@@ -24,6 +25,7 @@ class Book(Text):
             self.author_validate()
             self.type_validate()
             self.entries_validate()
+            self.order_validate()
 
     def definition_validate(self):
         self.validate_translation(self.definition, "fvbook:title_literal_translation")
@@ -43,6 +45,9 @@ class Book(Text):
         else:
             self.validate_text("story", "fvbook:type")
 
+    def order_validate(self):
+        self.validate_text(self.order, "fvbook:sort_map")
+
     def entries_validate(self):
         doc_children = self.doc.get_children()
         legacy_children = [entry for entry in self.dialect.legacy_book_entries if entry.book_id == self.id]
@@ -59,4 +64,12 @@ class Book(Text):
             if entry not in matches.values():
                 print("book entry not from legacy db")
                 print(entry)
+
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+        if not self.doc.get("fvbook:dominant_language_translation"):
+            self.dialect.flags.missingData(self, "fvbook:dominant_language_translation")
+        if not self.doc.get("fvbook:author"):
+            self.dialect.flags.missingData(self, "fvbook:author")
 

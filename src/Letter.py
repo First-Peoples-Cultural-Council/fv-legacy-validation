@@ -17,8 +17,13 @@ class Letter(Item):
         if super().validate():
             self.validate_int(self.order, "fvcharacter:alphabet_order")
             self.validate_text(self.upper, "fvcharacter:upper_case_character")
+            self.sample_validate()
+            self.extended_validate()
+            self.audio_validate()
 
     def sample_validate(self):
+        if self.sample_word is not None:
+            self.dialect.unentered_words.append(self.sample_word)
         self.validate_uid(self.sample_word, "fvcharacter:related_words", self.dialect.nuxeo_words.values())
 
     def audio_validate(self):
@@ -34,3 +39,7 @@ class Letter(Item):
             self.validate_int("True", "fvcharacter:extended")
         elif self.extended == 'N':
             self.validate_int("False", "fvcharacter:extended")
+
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")

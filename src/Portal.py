@@ -6,7 +6,7 @@ import re
 
 class Portal(Item):
 
-    def __init__(self, dialect, portal_info, first_words, image, audio, show_alphabet, show_keyboard):  #  no import ids-all fvl properties are null
+    def __init__(self, dialect, portal_info, first_words, image, audio, show_alphabet, show_keyboard):  #  no import ids-all fvl properties are null, update?
         super().__init__(dialect, dialect.id, "Portal")
         self.about = [portal_info[2], portal_info[0], portal_info[1]]
         self.greeting = portal_info[3]
@@ -43,9 +43,10 @@ class Portal(Item):
         #    portal_about = '<p><strong>About The '+self.people_name+' people</strong></p><p>'+portal_about  # review, maybe add back??
         # self.validate_text(portal_about, "fv-portal:about")
         # portal_about = self.html_strip(portal_about).strip()
-        if len(self.about) == 0 and self.doc.get("fv-portal:about") is None:
+        if not self.about and not self.doc.get("fv-portal:about"):
             return True
-        if len(self.about) == 0 or self.doc.get("fv-portal:about") is None:
+        if not self.about or not self.doc.get("fv-portal:about"):
+            self.dialect.flags.dataMismatch(self, "fv-portal:about", str(self.about), self.doc.get("fv-portal:about"))
             return False
         portal_about = " ".join(self.about)
         self.validate_text(portal_about, "fv-portal:about")
@@ -65,7 +66,7 @@ class Portal(Item):
         column = [self.column_title, self.column_text]
         while column.count(None) != 0:
             column.remove(None)
-        column = " ".join(column)
+        column = " ".join(column).strip()
         self.validate_text(column, "fv-portal:news")
 
     def links_validate(self):
@@ -76,7 +77,7 @@ class Portal(Item):
             self.image[0] = '/pixel.gif'
         self._media_validate(self.image[0], "fv-portal:logo", self.image[1], self.image[3], self.image[2], 1, self.image[4])
         self._media_validate(self.audio[0], "fv-portal:featured_audio", self.audio[1], self.audio[3], self.audio[2], 3, self.audio[4])
-        if self.theme is None:
+        if not self.theme:
             self._media_validate(self.theme, "fv-portal:background_bottom_image", None, None, None, 1, 1)
             self._media_validate(self.theme, "fv-portal:background_top_image", None, None, None, 1, 1)
         else:
@@ -87,9 +88,19 @@ class Portal(Item):
     def _media_validate(self, filename, nuxeo_str, descr, contributor, recorder, type, status):
         types = {1: self.dialect.nuxeo_imgs, 2: self.dialect.nuxeo_videos, 3: self.dialect.nuxeo_audio}
         nuxeo_docs = types[type].values()
-        if filename is None:
+        if not filename:
             self.validate_uid(filename, nuxeo_str, nuxeo_docs)
         else:
             self.validate_uid(filename[filename.rindex('/')+1:], nuxeo_str, nuxeo_docs)
             media = UnEnteredMediaFile(self.dialect, filename, descr, contributor, recorder, type, status)
             media.validate()
+
+    def quality_check(self):
+        if not self.doc.get("fv-portal:about"):
+            self.dialect.flags.missingData(self, "fv-portal:about")
+        if not self.doc.get('fv-portal:featured_words'):
+            self.dialect.flags.missingData(self, 'fv-portal:featured_words')
+        if not self.doc.get("fv-portal:logo"):
+            self.dialect.flags.missingData(self, "fv-portal:logo")
+        if not self.doc.get("fv-portal:greeting"):
+            self.dialect.flags.missingData(self, "fv-portal:greeting")

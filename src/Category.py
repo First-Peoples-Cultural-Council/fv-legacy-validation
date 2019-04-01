@@ -20,6 +20,10 @@ class PhraseBook(Item):
             img = UnEnteredMediaFile(self.dialect, self.image, None, None, None, 1, None)
             img.validate()
 
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+
 
 class Category(PhraseBook):  # review validation
 

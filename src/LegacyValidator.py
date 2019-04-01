@@ -13,7 +13,7 @@ class LegacyValidator:
         cur = Authorize.cursor
         data = Data()
 
-        dialects = self.get_dialects_test(cur, data)
+        self.get_dialects_test(cur, data)
         # missing = [145, 401, 403, 185, 406]
         # for dialect in dialects:
         #     if dialect.id not in missing:
@@ -98,13 +98,24 @@ class LegacyValidator:
                 dialect = Dialect(r[0], r[1], admin_info, contact_info, descriptions, r[11], r[16], r[17], r[54], r[55], r[64], r[65], grammar_rules, pronunciation, r[39], r[40], r[34], r[35], r[6], data)
                 portal = Portal(dialect, portal_info, first_words, image, sound, r[56], r[57])
                 dialect.portal = portal
-                missing = [145, 401, 403, 185, 406]
+                missing = [145, 401, 403, 185, 406]  # remove 586 later !!
                 if dialect.id not in missing:
                     dialect.get_attributes()
                     dialect.validate()
-                    print(dialect.id)
-        return dialects
-
+                    dialect.report()
+                    dialect.update_dialect()
+                    print("********************")
+                    print("********************")
+                    print(str(dialect.id)+" "+dialect.title+" is complete")
+                    print("********************")
+                    print("********************")
+                    # cont = input("Enter a string to continue")
+                else:
+                    print("********************")
+                    print("********************")
+                    print(dialect.id+" "+dialect.title+" is MISSING")
+                    print("********************")
+                    print("********************")
     # def get_words(self):
     #     word_rows = self.legacy.execute("SELECT ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, "
     #                                     "CATEGORY_ID, ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, "

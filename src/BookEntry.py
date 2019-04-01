@@ -20,10 +20,14 @@ class BookEntry(Text):
             self.order_validate()
 
     def definition_validate(self):
-        if self.definition:
-            self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
-        else:
-            self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
+        self.validate_translation(self.definition, "fvbookentry:dominant_language_text")
 
     def order_validate(self):
         self.validate_int(self.order, "fvbookentry:sort_map")
+
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+        if not self.doc.get("fvbookentry:dominant_language_text"):
+            self.dialect.flags.missingData(self, "fvbookentry:dominant_language_text")
+

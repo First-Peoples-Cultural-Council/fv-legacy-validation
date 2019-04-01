@@ -9,6 +9,7 @@ class Data:
     def __init__(self):
         nuxeo = Authorize.nuxeo
         legacy = Authorize.cursor
+        self.nuxeo_dialects = {}
         self.dialect_categories = {}
         self.legacy_categories = {}
         self.legacy_pos = {}
@@ -52,7 +53,10 @@ class Data:
         entries = category.get("entries")
         for item in entries:
             self.categories.append(item)
-            self.shared_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+            if self.shared_categories.get(item.get("fva:dialect")):
+                self.shared_categories[item.get("fva:dialect")].append(item)
+            else:
+                self.shared_categories[item.get("fva:dialect")] = [item]
             self.all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
 
         get_categories = False
@@ -67,7 +71,10 @@ class Data:
         entries = category.get("entries")
         for item in entries:
             self.categories.append(item)
-            self.private_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
+            if self.private_categories.get(item.get("fva:dialect")):
+                self.private_categories[item.get("fva:dialect")].append(item)
+            else:
+                self.private_categories[item.get("fva:dialect")] = [item]
             self.all_categories[item.uid] = re.sub("[/()\- ]+", "_", item.get('dc:title')).lower()
 
         rows = legacy.execute("select ID, NAME "
@@ -101,3 +108,16 @@ class Data:
                 nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
 
         self.nuxeo_lang_grp = groups.get("entries")
+
+        got_dialects = False
+        while not got_dialects:
+            try:
+                dialects = nuxeo.documents.query(opts={'query': "SELECT * FROM FVDialect "
+                                                "WHERE ecm:path STARTSWITH '/FV/Workspaces/Data'"})
+                got_dialects = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+
+        entries = dialects.get("entries")
+        for item in entries:
+            self.nuxeo_dialects[item.get("fvl:import_id")] = item

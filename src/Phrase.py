@@ -23,6 +23,7 @@ class SamplePhrase(Text):
     def __init__(self, dialect, phrase_id, title, definition, user, contributor, children_archive, status):
         Text.__init__(self, dialect, phrase_id, title, definition, user, contributor, None, None, None,
                       None, None, children_archive, status)
+        self.dialect.unentered_phrases += 1
 
     def validate(self):
         for p in self.dialect.nuxeo_phrases:
@@ -30,4 +31,4 @@ class SamplePhrase(Text):
                 self.doc = p
                 break
 
-        return super().validate()
+        super().validate()

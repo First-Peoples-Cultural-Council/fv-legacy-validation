@@ -37,12 +37,20 @@ class MediaFile(Item):
     def recorder_validate(self):
         self.contributor_validate(self.recorder, "fvm:recorder")
 
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+        if not self.doc.get("fvm:recorder"):
+            self.dialect.flags.missingData(self, "fvm:recorder")
+        if not self.doc.get("file:content").get("data"):
+            self.dialect.flags.missingData(self, "file:content")
+
 
 class UnEnteredMediaFile(MediaFile):
 
     def __init__(self, dialect, filename, description, contributor, recorder, type_id, status):
-        super().__init__(dialect, None, filename, description, None, contributor, recorder, type_id, 0, status)
-        self.dialect.unentered_media +=1
+        super().__init__(dialect, None, filename, description, None, contributor, recorder, type_id, None, status)
+        self.dialect.unentered_media[self.type-1] += 1
 
     def validate(self):
         types = {1: self.dialect.nuxeo_imgs, 2: self.dialect.nuxeo_videos, 3: self.dialect.nuxeo_audio}

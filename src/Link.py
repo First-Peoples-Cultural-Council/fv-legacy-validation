@@ -23,8 +23,20 @@ class Link(Item):
             # self.contributor_validate(self.contributor, "")
 
     def file_validate(self):
-        if not self.exists("https://preprod.firstvoices.com/nuxeo/nxfile/default/"+str(self.doc.uid)+"/file:content/"+self.title):
-            self.dialect.flags.fileMissing(self)
-            print(self.title)
-            print(self.doc.uid)
-            print("link not found ?? " +self.doc.uid)
+        if not self.doc.get("fvlink:url"):
+            if not self.exists("https://preprod.firstvoices.com/nuxeo/nxfile/default/"+str(self.doc.uid)+"/file:content/"+self.title):
+                self.dialect.flags.fileMissing(self)
+                print(self.title)
+                print(self.doc.uid)
+                print("link not found ?? " +self.doc.uid)
+        else:
+            if not self.exists(self.doc.get("fvlink:url")):
+                self.dialect.flags.fileMissing(self)
+
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+        if not self.doc.get("dc:description"):
+            self.dialect.flags.missingData(self, "dc:description")
+        if not self.doc.get("fvlink:url") and not self.doc.get("file:content").get("data"):
+            self.dialect.flags.missingData(self, "file:content")

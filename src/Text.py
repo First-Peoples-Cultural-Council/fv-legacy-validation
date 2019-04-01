@@ -48,18 +48,25 @@ class Text(Item):
                 self.validate_text(note, "fv:cultural_note")
 
     def media_validate(self):
-        if self.image_id in self.dialect.legacy_media:
+        if self.image_id in self.dialect.legacy_media.keys():
             self.validate_uid(self.dialect.legacy_media[self.image_id].title, "fv:related_pictures", self.dialect.nuxeo_imgs.values())
         else:
-            self.validate_uid(None, "fv:related_pictures", self.dialect.nuxeo_imgs.values())
-        if self.video_id in self.dialect.legacy_media:
+            self.validate_uid(self.image_id, "fv:related_pictures", self.dialect.nuxeo_imgs.values())
+        if self.video_id in self.dialect.legacy_media.keys():
             self.validate_uid(self.dialect.legacy_media[self.video_id].title, "fv:related_videos", self.dialect.nuxeo_videos.values())
         else:
-            self.validate_uid(None, "fv:related_videos", self.dialect.nuxeo_videos.values())
-        if self.audio_id in self.dialect.legacy_media:
+            self.validate_uid(self.video_id, "fv:related_videos", self.dialect.nuxeo_videos.values())
+        if self.audio_id in self.dialect.legacy_media.keys():
             self.validate_uid(self.dialect.legacy_media[self.audio_id].title, "fv:related_audio", self.dialect.nuxeo_audio.values())
         else:
-            self.validate_uid(None, "fv:related_audio", self.dialect.nuxeo_audio.values())
+            self.validate_uid(self.audio_id, "fv:related_audio", self.dialect.nuxeo_audio.values())
 
     def childrens_validate(self):
         self.validate_int(self.children_archive, "fv:available_in_childrens_archive")
+
+    def quality_check(self):
+        if not self.doc.get("dc:title"):
+            self.dialect.flags.missingData(self, "dc:title")
+        if not self.doc.get("fv:definitions"):
+            self.dialect.flags.missingData(self, "fv:definitions")
+
