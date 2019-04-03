@@ -22,15 +22,18 @@ class Letter(Item):
             self.audio_validate()
 
     def sample_validate(self):
-        if self.sample_word is not None:
+        if self.sample_word:
             self.dialect.unentered_words.append(self.sample_word)
         self.validate_uid(self.sample_word, "fvcharacter:related_words", self.dialect.nuxeo_words.values())
 
     def audio_validate(self):
-        if self.audio[0] is None:
+        if not self.audio[0]:
             self.validate_uid(self.audio[0], "fv:related_audio", self.dialect.nuxeo_audio.values())
         else:
-            self.validate_uid(self.audio[0][self.audio[0].rindex('/')+1:], "fv:related_audio", self.dialect.nuxeo_audio.values())
+            if self.audio[0].count('/'):
+                self.validate_uid(self.audio[0][self.audio[0].rindex('/')+1:], "fv:related_audio", self.dialect.nuxeo_audio.values())
+            else:
+                self.validate_uid(self.audio[0][self.audio[0].rindex('\\')+1:], "fv:related_audio", self.dialect.nuxeo_audio.values())
             audio = UnEnteredMediaFile(self.dialect, self.audio[0], self.audio[1], self.audio[2], self.audio[3], 3, self.audio[4])
             audio.validate()
 

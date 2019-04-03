@@ -61,10 +61,11 @@ class LegacyValidator:
 
     def get_dialects_test(self, db, data):
         dialects = []
-        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY ORDER BY ID ASC")
+        entries = db.execute("SELECT ID FROM FIRSTVOX.DICTIONARY ORDER BY ID DESC")
 
         for r in entries:
-            dialects.append(r[0])
+            if r[0] < 403:
+                dialects.append(r[0])
         for temp_id in dialects:
 
             entries = db.execute("SELECT ID, NAME, ADMIN_EMAIL_ADDRESS, ADMIN_FIRST_NAME, ADMIN_LAST_NAME, "  # 0-4
@@ -104,29 +105,10 @@ class LegacyValidator:
                     dialect.validate()
                     dialect.report()
                     # dialect.update_dialect()
-                    print("********************")
-                    print("********************")
                     print(str(dialect.id)+" "+dialect.title+" is complete")
-                    print("********************")
-                    print("********************")
                     # cont = input("Enter a string to continue")
                 else:
-                    print("********************")
-                    print("********************")
                     print(str(dialect.id)+" "+dialect.title+" is MISSING")
-                    print("********************")
-                    print("********************")
-    # def get_words(self):
-    #     word_rows = self.legacy.execute("SELECT ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, "
-    #                                     "CATEGORY_ID, ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, "
-    #                                     "ASSIGNED_USR_ID, CONTRIBUTER, CULTURAL_NOTE, PHONETIC_INFO, REFERENCE, "
-    #                                     "IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, AVAILABLE_IN_CHILDRENS_ARCHIVE"
-    #                                     ", STATUS_ID, DOMINANT_LANGUAGE_DEFINITION "
-    #                                     "FROM FIRSTVOX.WORD_ENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
-    #     for r in word_rows:
-    #         word = Word(self, r[0], r[1].strip(), r[2], Data.legacy_pos[r[3]], Data.legacy_categories[r[4]], r[5], r[6],
-    #                     r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15], r[16], r[17])
-    #         self.legacy_words.append(word)
 
 
 lv = LegacyValidator()

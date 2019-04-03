@@ -9,6 +9,7 @@ class MediaFile(Item):
             super().__init__(dialect, file_id, filename, user)
         else:
             super().__init__(dialect, file_id, filename[filename.rindex('/')+1:], user)
+        self.filename = filename
         self.description = description
         self.contributor = contributor
         self.recorder = recorder

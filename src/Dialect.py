@@ -75,6 +75,8 @@ class Dialect(Item):
 
     def validate(self):
         self.dialect_validate()
+        for letter in self.legacy_letters:
+            letter.validate()
         for word in self.legacy_words:
             word.validate()
         for phrase in self.legacy_phrases:
@@ -171,7 +173,20 @@ class Dialect(Item):
                 self.dialect_media.append(r[13])
             if r[14] is not None:
                 self.dialect_media.append(r[14])
-
+        # dictionary = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Dictionary":
+        #         dictionary = child
+        #         break
+        # print(self.nuxeo.client.request("GET", "https://preprod.firstvoices.com/nuxeo/api/v1/id/2a277629-1220-4c29-a068-fc608c64e31d/@children"))
+        # i=0
+        # while self.nuxeo.documents.get_children(uid=dictionary.uid).get("isNextPageAvailable"):
+        #     for w in self.nuxeo.documents.get_children(uid=dictionary.uid):
+        #         if w.type == "FVWord":
+        #             self.nuxeo_words[w.get("fvl:import_id")] = w
+        #         if w.type == "FVPhrase":
+        #             self.nuxeo_phrases[w.get("fvl:import_id")] = w
+        #     i += 1
         got_words = False
         while not got_words:
             try:
@@ -192,6 +207,15 @@ class Dialect(Item):
 
         for r in rows:
             self.legacy_letters.append(Letter(self, r[0], r[1], r[2], r[3], r[4], r[5], [r[6], r[7], r[8], r[9], r[10]], r[11]))
+
+        # alphabet = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Alphabet":
+        #         alphabet = child
+        #         break
+        #
+        # for letter in self.nuxeo.documents.get_children(uid=alphabet.uid):
+        #     self.nuxeo_letters[letter.get("fvl:import_id")] = letter
 
         got_letters = False
         while not got_letters:
@@ -270,6 +294,14 @@ class Dialect(Item):
                 self.dialect_media.append(r[7])
             if r[8] is not None:
                 self.dialect_media.append(r[8])
+        # books = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Stories & Songs":
+        #         books = child
+        #         break
+        #
+        # for book in self.nuxeo.documents.get_children(uid=books.uid):
+        #     self.nuxeo_books[book.get("fvl:import_id")] = book
 
         got_books = False
         while not got_books:
@@ -299,6 +331,11 @@ class Dialect(Item):
             if r[9] is not None:
                 self.dialect_media.append(r[9])
 
+        # for book in self.nuxeo_books.values():
+        #     for entry in self.nuxeo.documents.get_children(uid=book.uid):
+        #         self.nuxeo_book_entries[entry.get("fvl:import_id")] = entry
+
+
         got_entries = False
         while not got_entries:
             try:
@@ -314,6 +351,13 @@ class Dialect(Item):
             self.nuxeo_book_entries[entry.get("fvl:import_id")] = entry
 
     def get_contributors(self):
+        # contributors = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Contributors":
+        #         contributors = child
+        #         break
+        #
+        # self.nuxeo_contributors = self.nuxeo.documents.get_children(uid=contributors.uid)
 
         got_contributors = False
         while not got_contributors:
@@ -343,6 +387,20 @@ class Dialect(Item):
             j += 1000
             if j > len(self.dialect_media) > i:
                 j = len(self.dialect_media)
+
+        # media = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Resources":
+        #         media = child
+        #         break
+        #
+        # for file in self.nuxeo.documents.get_children(uid=media.uid):
+        #     if file.type == "FVAudio":
+        #         self.nuxeo_audio[file.get("fvl:import_id")] = file
+        #     elif file.type == "FVVideo":
+        #         self.nuxeo_videos[file.get("fvl:import_id")] = file
+        #     elif file.type == "FVPicture":
+        #         self.nuxeo_imgs[file.get("fvl:import_id")] = file
 
         got_entries = False
         while not got_entries:
@@ -415,6 +473,14 @@ class Dialect(Item):
             link = Link(self, r[10], r[10][r[10].rindex('/')+1:], r[11], r[12], r[13], r[14], "pc")
             self.legacy_links.append(link)
 
+        # links = None
+        # for child in self.nuxeo.documents.get_children(uid=self.doc.uid):
+        #     if child.get('dc:title') == "Links":
+        #         links = child
+        #         break
+        #
+        # self.nuxeo_links = self.nuxeo.documents.get_children(uid=links.uid)
+
         got_links = False
         while not got_links:
             try:
@@ -428,15 +494,18 @@ class Dialect(Item):
         self.nuxeo_links = queried_links.get("entries")
 
     def report(self):
-        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title.replace(" ", "")+'All.csv'):
-            os.remove(self.title.replace(" ", "")+'All.csv')
-        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title.replace(" ", "")+'AllErrors.csv'):
-            os.remove(self.title.replace(" ", "")+'AllErrors.csv')
-        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title.replace(" ", "")+'.csv'):
-            os.remove(self.title.replace(" ", "")+'.csv')
-        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title.replace(" ", "")+'Errors.csv'):
-            os.remove(self.title.replace(" ", "")+'Errors.csv')
-        leg_media = len(self.flags.AudioErrors)+len(self.flags.VideoErrors)+len(self.flags.ImgErrors)+self.unentered_media[0]+self.unentered_media[1]+self.unentered_media[2]
+        self.title = self.title.replace(" ", "").replace("/", "")
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'All.csv'):
+            os.remove(self.title+'All.csv')
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'AllErrors.csv'):
+            os.remove(self.title+'AllErrors.csv')
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'.csv'):
+            os.remove(self.title+'.csv')
+        if os.path.isfile('/C:/Users/lalia/fv-legacy-validation/src/'+self.title+'Errors.csv'):
+            os.remove(self.title+'Errors.csv')
+
+        leg_media_err = len(self.flags.AudioErrors)+len(self.flags.VideoErrors)+len(self.flags.ImgErrors)
+        leg_media = len(self.legacy_media.values())+self.unentered_media[0]+self.unentered_media[1]+self.unentered_media[2]+len(self.art_gallery)+len(self.photo_gallery)
         leg_audio = [audio for audio in self.legacy_media.values() if audio.type == 3]
         leg_video = [vid for vid in self.legacy_media.values() if vid.type == 2]
         leg_img = [img for img in self.legacy_media.values() if img.type == 1]
@@ -459,7 +528,7 @@ class Dialect(Item):
                   "Phrase Books": [self.flags.PhraseBookErrors, self.flags.PhraseBookQuality, len(self.legacy_phrase_books), len(self.nuxeo_phrase_books.values())],
                   "Audio Files": [self.flags.AudioErrors, self.flags.AudioQuality, len(leg_audio)+self.unentered_media[2], len(self.nuxeo_audio.values())],
                   "Video Files": [self.flags.VideoErrors, self.flags.VideoQuality, len(leg_video)+self.unentered_media[1], len(self.nuxeo_videos.values())],
-                  "Image Files": [self.flags.ImgErrors, self.flags.ImgQuality, len(leg_img)+self.unentered_media[0], len(self.nuxeo_imgs.values())],
+                  "Image Files": [self.flags.ImgErrors, self.flags.ImgQuality, len(leg_img)+self.unentered_media[0]+len(self.photo_gallery)+len(self.art_gallery), len(self.nuxeo_imgs.values())],
                   "Songs": [self.flags.SongErrors, self.flags.SongQuality, len(songs), len(nux_songs)],
                   "Song Entries": [self.flags.SongEntryErrors, self.flags.SongEntryQuality, len(songs_entry), nux_songs_entry],
                   "Stories": [self.flags.StoryErrors, self.flags.StoryQuality, len(stories), len(nux_stories)],
@@ -483,69 +552,86 @@ class Dialect(Item):
             csvWriter.writerow(["Type", "Errors", "Number on Legacy Site", "Number on New Site"])
             for type in errors:
                 if type == "Audio Files":
-                    csvWriter.writerow(["Media Files", leg_media, len(self.legacy_media.values()), len(self.nuxeo_audio)+len(self.nuxeo_videos)+len(self.nuxeo_imgs)])
+                    csvWriter.writerow(["Media Files", leg_media_err, leg_media, len(self.nuxeo_audio)+len(self.nuxeo_videos)+len(self.nuxeo_imgs)])
                 csvWriter.writerow([type, len(errors.get(type)[0]), errors.get(type)[2],  errors.get(type)[3]])
             i = 0
             for w in self.unentered_words:
                 if w not in self.legacy_words:
                     i += 1
+            csvWriter.writerow([])
+            csvWriter.writerow(["Quality Check Errors"])
+            csvWriter.writerow(["Type", "Errors"])
+            for type in errors:
+                # err_types = {}
+                # for err in errors.get(type)[1]:
+                #     err_types[err[0]] = (err_types.get(err[0]) or 0) + 1
+                csvWriter.writerow([type, len(errors.get(type)[1])])
+                # for err in err_types:
+                #     csvWriter.writerow(["", type[:len(type)-1]+err, err_types.get(err)])
+
             print('new unentered words: : : :')
             print(len(self.unentered_words))
             print(i)
 
-        with open(self.title.replace(" ", "")+'AllErrors.csv', mode='wb+') as detailfile:  # media files only put as subsection under other types??
+        with open(self.title+'AllErrors.csv', mode='wb+') as detailfile:  # media files only put as subsection under other types??
             csvWriter = csv.writer(detailfile)
             csvWriter.writerows(error_info)
             csvWriter.writerow([])
-            csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Item ID", "Property", "Legacy Value", "New Site Value"])
+            csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Property", "Legacy Value", "New Site Value", "Legacy ID", "New ID"])
             for type in errors:
                 csvWriter.writerow([type, len(errors.get(type)[0])])
                 for error in errors.get(type)[0]:
-                    csvWriter.writerow(["", "", error[0], error[1], error[2], error[3], error[4], error[5]])
+                    csvWriter.writerow(["", "", error[0], error[1], error[3], error[4], error[5], error[2], error[6]])
             csvWriter.writerow([])
             csvWriter.writerow(["Quality Check Errors"])
             csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Property", "Legacy ID", "New ID"])
             for type in errors:
                 csvWriter.writerow([type, len(errors.get(type)[1])])
                 for error in errors.get(type)[1]:
-                    csvWriter.writerow(["", "", type+error[0], error[1], error[2], error[3], error[4]])
+                    csvWriter.writerow(["", "", type[:len(type)-1]+error[0], error[1], error[2], error[3], error[4]])
 
         for type in errors:
-            errors.get(type)[0] = [err for err in errors.get(type)[0] if not err[6]]
+            errors.get(type)[0] = [err for err in errors.get(type)[0] if not err[7]]
 
-        leg_media = len(self.flags.AudioErrors)+len(self.flags.VideoErrors)+len(self.flags.ImgErrors)+self.unentered_media[0]+self.unentered_media[1]+self.unentered_media[2]
+        leg_media_err = len(self.flags.AudioErrors)+len(self.flags.VideoErrors)+len(self.flags.ImgErrors)
+        leg_media = len(self.legacy_media.values())+self.unentered_media[0]+self.unentered_media[1]+self.unentered_media[2]  # removed gallery imgs bc should add them
 
         with open(self.title+'.csv', mode='wb+') as updateoverviewfile:
             csvWriter = csv.writer(updateoverviewfile)
             csvWriter.writerow(["Type", "Errors", "Number on Legacy Site", "Number on New Site"])
             for type in errors:
                 if type == "Audio Files":
-                    csvWriter.writerow(["Media Files", leg_media, len(self.legacy_media.values()), len(self.nuxeo_audio)+len(self.nuxeo_videos)+len(self.nuxeo_imgs)])
+                    csvWriter.writerow(["Media Files", leg_media_err, leg_media,
+                                        len(self.nuxeo_audio)+len(self.nuxeo_videos)+len(self.nuxeo_imgs)])
                 csvWriter.writerow([type, len(errors.get(type)[0]), errors.get(type)[2],  errors.get(type)[3]])
-            i = 0
-            for w in self.unentered_words:
-                if w not in self.legacy_words:
-                    i += 1
-            print('new unentered words: : : :')
-            print(len(self.unentered_words))
-            print(i)
+            csvWriter.writerow([])
+            csvWriter.writerow(["Quality Check Errors"])
+            csvWriter.writerow(["Type", "Errors"])
+            for type in errors:
+                # err_types = {}
+                # for err in errors.get(type)[1]:
+                #     err_types[err[0]] = (err_types.get(err[0]) or 0) + 1
+                csvWriter.writerow([type, len(errors.get(type)[1])])
+                # for err in err_types:
+                #     csvWriter.writerow(["", type[:len(type)-1]+err, err_types.get(err)])
 
-        with open(self.title.replace(" ", "")+'Errors.csv', mode='wb+') as updatedetailfile:
+
+        with open(self.title+'Errors.csv', mode='wb+') as updatedetailfile:
             csvWriter = csv.writer(updatedetailfile)
             csvWriter.writerows(error_info)
             csvWriter.writerow([])
-            csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Item ID", "Property", "Legacy Value", "New Site Value"])
+            csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Property", "Legacy Value", "New Site Value",  "Legacy ID", "New ID"])
             for type in errors:
                 csvWriter.writerow([type, len(errors.get(type)[0])])
                 for error in errors.get(type)[0]:
-                    csvWriter.writerow(["", "", error[0], error[1], error[2], error[3], error[4], error[5]])
+                    csvWriter.writerow(["", "", error[0], error[1], error[3], error[4], error[5], error[2], error[6]])
             csvWriter.writerow([])
             csvWriter.writerow(["Quality Check Errors"])
             csvWriter.writerow(["Type", "Error Amount", "Error", "Item Name", "Property", "Legacy ID", "New ID"])
             for type in errors:
                 csvWriter.writerow([type, len(errors.get(type)[1])])
                 for error in errors.get(type)[1]:
-                    csvWriter.writerow(["", "", type[:len(type-1)]+error[0], error[1], error[2], error[3], error[4]])
+                    csvWriter.writerow(["", "", type[:len(type)-1]+error[0], error[1], error[2], error[3], error[4]])
 
     def update_dialect(self):  # updater.update_property(doc, nuxeo_str, value)
         for error in self.flags.update:
@@ -553,7 +639,7 @@ class Dialect(Item):
             print(str(error[1])+" "+str(error[2])+" "+str(error[3])+" "+str(error[4])+" "+str(error[5])+" "+str(error[6])+" "+str(error[7]))
 
     def create_galleries(self):  # create_doc( path, name, type, properties), properties must have dc:title
-        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife))))"
+        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Language))))"
         updater = Updater()
         if self.art_gallery:
             related_pics = []

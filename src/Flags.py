@@ -37,7 +37,7 @@ class Exceptions:
         self.item = None
         self.item_update = False
         self.update = []
-        self.update_names = ["fvl:change_date", "fvl:status_id", "fv:available_in_childrens_archive", "fvm:shared"]
+        self.update_names = ["fvl:change_date", "fvl:status_id", "fv:available_in_childrens_archive", "fvm:shared", "fvcharacter:extended", "fvl:assigned_usr_id"]
         self.types = {"<class 'src.Portal.Portal'>": [self.PortalErrors, self.PortalQuality], "<class 'src.Link.Link'>": [self.LinkErrors, self.LinkQuality],
                       "<class 'src.Dialect.Dialect'>": [self.DialectErrors, self.DialectQuality], "<class 'src.Word.Word'>": [self.WordErrors, self.WordQuality],
                       "<class 'src.Category.PhraseBook'>": [self.PhraseBookErrors, self.PhraseBookQuality], "<class 'src.Phrase.Phrase'>": [self.PhraseErrors, self.PhraseQuality],
@@ -61,47 +61,47 @@ class Exceptions:
 
     def itemNotFound(self, item):  # related phrase, sample word?  wrong state??
         group = self.getGroup(item)[0]
-        group.append(["Item not Found", item.title, item.id, "", "", "", ""])
+        group.append(["Item not Found", item.title, item.id, "", "", "", "", ""])
 
     def fileMissing(self, item):
         group  = self.getGroup(item)[0]
-        group.append(["File does not Exist", item.title, item.id, "File linked does not exist", "", "", ""])
+        group.append(["File does not Exist", item.title, item.id, "File linked does not exist", "", "", "", ""])
 
     def dataMismatch(self, item, nuxeo_str, expected, actual): # what to do when item is attached to another item?
         group = self.getGroup(item)[0]
-        self.item_update = self.toUpdate(str(item.__class__), item.doc, item.title, item.id, nuxeo_str, expected, actual)
-        if not self.unexpectedProperty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual) and \
-            not self.propertyEmpty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual) and \
-            not self.multipleContributors(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual) \
-            and not self.switched("Data Mismatch", group, item.title, item.id, self.property_name[nuxeo_str], expected, actual):
-                group.append(["Data Mismatch", item.title, item.id, self.property_name[nuxeo_str], expected, actual, self.item_update])
+        self.item_update = self.toUpdate(item.doc, item.title, item.id, nuxeo_str, expected, actual)
+        if not self.unexpectedProperty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) and \
+            not self.propertyEmpty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) and \
+            not self.multipleContributors(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) \
+            and not self.switched("Data Mismatch", group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid):
+                group.append(["Data Mismatch", item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid, self.item_update])
 
-    def propertyEmpty(self, group, title, id, property_name, expected, actual):
-        if not actual and not self.switched("Unexpected Property", group, title, id, property_name, expected, None):
-            group.append(["Property Empty", title, id, property_name, expected, None, self.item_update])
+    def propertyEmpty(self, group, title, id, property_name, expected, actual, uid):
+        if not actual and not self.switched("Unexpected Property", group, title, id, property_name, expected, None, uid):
+            group.append(["Property Empty", title, id, property_name, expected, None, uid, self.item_update])
             return True
         return False
 
-    def unexpectedProperty(self, group, title, id, property_name, expected, actual):
-        if not expected and not self.switched("Property Empty", group, title, id, property_name, None, actual):
-            group.append(["Unexpected Property", title, id, property_name, None, actual, self.item_update])
+    def unexpectedProperty(self, group, title, id, property_name, expected, actual, uid):
+        if not expected and not self.switched("Property Empty", group, title, id, property_name, None, actual, uid):
+            group.append(["Unexpected Property", title, id, property_name, None, actual, uid, self.item_update])
             return True
         return False
 
-    def multipleContributors(self, group, title, id, property_name, expected, actual):
-        if property_name == "Contributor" and len(expected) > 1:
-            group.append(["Multiple Contributors", title, id, "Contributors", expected, actual, self.item_update])
+    def multipleContributors(self, group, title, id, property_name, expected, actual, uid):
+        if property_name in ("Contributor", "Recorder", "Author") and len(expected) > 1:
+            group.append(["Multiple Contributors", title, id, "Contributors", expected, actual, uid, self.item_update])
             return True
         return False
 
-    def switched(self, name, group, title, id, property_name, expected, actual):
-        if property_name == "Literal Translation" and [name, title, id, "Definition", actual, expected] in group:
-            group.append(["Switched Definition and Literal Translation", title, id, "Definition, Literal Translation", str(actual)+", "+str(expected), str(expected)+", "+str(actual), self.item_update])
-            group.remove([name, title, id, "Definition", actual, expected, self.item_update])
+    def switched(self, name, group, title, id, property_name, expected, actual, uid):
+        if property_name == "Literal Translation" and [name, title, id, "Definition", actual, expected, uid, self.item_update] in group:
+            group.append(["Switched Definition and Literal Translation", title, id, "Definition, Literal Translation", str(actual)+", "+str(expected), str(expected)+", "+str(actual), uid, self.item_update])
+            group.remove([name, title, id, "Definition", actual, expected, uid, self.item_update])
             return True
-        if property_name == "Definition" and [name, title, id, "Literal Translation", actual, expected] in group:
-            group.append(["Switched Definition and Literal Translation", title, id, "Definition, Literal Translation", str(expected)+", "+str(actual), str(actual)+", "+str(expected), self.item_update])
-            group.remove([name, title, id, "Literal Translation", actual, expected, self.item_update])
+        if property_name == "Definition" and [name, title, id, "Literal Translation", actual, expected, uid, self.item_update] in group:
+            group.append(["Switched Definition and Literal Translation", title, id, "Definition, Literal Translation", str(expected)+", "+str(actual), str(actual)+", "+str(expected), uid, self.item_update])
+            group.remove([name, title, id, "Literal Translation", actual, expected, uid, self.item_update])
             return True
         return False
 
@@ -145,7 +145,7 @@ class Exceptions:
         group = self.getGroup(item)[1]
         group.append([" has no "+self.property_name[nuxeo_str].lower(), item.title, self.property_name[nuxeo_str], item.id, item.doc.uid])
 
-    def toUpdate(self, item_class, doc, title, item_id, nuxeo_str, expected, actual):
+    def toUpdate(self, doc, title, item_id, nuxeo_str, expected, actual):
         if nuxeo_str in self.update_names:
             self.update.append([doc, title, self.property_name[nuxeo_str], item_id, doc.uid, nuxeo_str, expected, actual])
             return True

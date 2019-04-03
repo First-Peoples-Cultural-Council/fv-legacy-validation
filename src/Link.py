@@ -19,8 +19,6 @@ class Link(Item):
 
         if super().validate():
             self.validate_text(self.description, "dc:description")
-            # self.validate_int(self.status, "fvl:status_id")
-            # self.contributor_validate(self.contributor, "")
 
     def file_validate(self):
         if not self.doc.get("fvlink:url"):

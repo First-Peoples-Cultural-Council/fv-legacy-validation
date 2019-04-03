@@ -50,6 +50,7 @@ class Item:
             legacy_name = legacy_name.replace("\r\n", "<br />")
         if not isinstance(legacy_name, str):
             for name in legacy_name:
+                name = name.replace("<\p>", "")
                 if name.strip() not in self.doc.get(nuxeo_str):
                     match = False
                     for nux in self.doc.get(nuxeo_str):
@@ -62,14 +63,18 @@ class Item:
                         print(self.doc.get(nuxeo_str))
                         print(str(self.__class__) + str(self.id))
                         return False
-        elif legacy_name.strip() == self.doc.get(nuxeo_str).strip():
             return True
-        elif not LetterMapper().compare(legacy_name.strip(), self.doc.get(nuxeo_str).strip()):
-            self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
-            print(legacy_name.strip())
-            print(self.doc.get(nuxeo_str).strip())
-            print(str(self.__class__) + str(self.id))
-            return False
+        else:
+            legacy_name.replace("<\p>", "")
+            nuxeo_value = self.doc.get(nuxeo_str).replace("<\p>", "")
+            if legacy_name.strip() != nuxeo_value.strip():
+                if not LetterMapper().compare(legacy_name.strip(), nuxeo_value.strip()):
+                    self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_value)
+                    print(legacy_name.strip())
+                    print(nuxeo_value.strip())
+                    print(str(self.__class__) + str(self.id))
+                    return False
+            return True
 
     def validate_int(self, legacy_name, nuxeo_str):
         if legacy_name is None and self.doc.get(nuxeo_str) is None:
@@ -168,7 +173,7 @@ class Item:
         if not legacy_contributor:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, sources)
             return False
-        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife))))"
+        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Language))))"
         contributors = re.split(match, legacy_contributor, re.IGNORECASE)
         contributors = [con for con in contributors if con not in [",", "/", "", " and ", " & "] and con is not None]
         for con in contributors:

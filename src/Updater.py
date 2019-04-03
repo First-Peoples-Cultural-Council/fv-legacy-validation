@@ -19,3 +19,4 @@ class Updater:
             properties=properties) # a dict of propertyname: value
         ws = self.nuxeo.documents.create(new_doc, parent_path=path)
         ws.save()
+        return ws
