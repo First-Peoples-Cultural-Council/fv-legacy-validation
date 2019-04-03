@@ -2,7 +2,6 @@ from src.authorization import Authorize
 from src.LetterMapper import LetterMapper
 import re
 import requests
-import calendar
 
 
 class Item:
@@ -49,24 +48,25 @@ class Item:
         if self.doc.get(nuxeo_str).count("<br />") != 0:
             legacy_name = legacy_name.replace("\r\n", "<br />")
         if not isinstance(legacy_name, str):
+            nuxeo_values = [name.replace("</p>", "").replace("<p>", "") for name in self.doc.get(nuxeo_str)]
             for name in legacy_name:
-                name = name.replace("<\p>", "")
-                if name.strip() not in self.doc.get(nuxeo_str):
+                name = name.replace("</p>", "").replace("<p>", "")
+                if name.strip() not in nuxeo_values:
                     match = False
-                    for nux in self.doc.get(nuxeo_str):
+                    for nux in nuxeo_values:
                         if LetterMapper().compare(name.strip(), nux.strip()):
                             match = True
                             break
                     if not match:
-                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
+                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_values)
                         print(name.strip())
-                        print(self.doc.get(nuxeo_str))
+                        print(nuxeo_values)
                         print(str(self.__class__) + str(self.id))
                         return False
             return True
         else:
-            legacy_name.replace("<\p>", "")
-            nuxeo_value = self.doc.get(nuxeo_str).replace("<\p>", "")
+            legacy_name.replace("</p>", "").replace("<p>", "")
+            nuxeo_value = self.doc.get(nuxeo_str).replace("</p>", "").replace("<p>", "")
             if legacy_name.strip() != nuxeo_value.strip():
                 if not LetterMapper().compare(legacy_name.strip(), nuxeo_value.strip()):
                     self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_value)

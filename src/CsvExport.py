@@ -18,16 +18,21 @@ class Exporter:
             self.pos[r[0]] = r[1].lower().capitalize()
 
     def export(self, dialect, title, headers, table, where=None):
-        if not where:
-            rows = self.legacy.execute("SELECT "+headers+" FROM "+table+" WHERE DICTIONARY_ID = '"+str(dialect)+"'")
-        else:
-            rows = self.legacy.execute("SELECT "+headers+" FROM "+table+" WHERE DICTIONARY_ID = '"+str(dialect)+"' AND "+where)
+        print(title)
+
+        rows = self.legacy.execute("select "+headers+" from "+table+" where DICTIONARY_ID = '"+str(dialect)+"' "+(where or ""))
 
         with open(title, mode='wb') as csvfile:
             csvWriter = csv.writer(csvfile)
             csvWriter.writerow(headers.split(","))
             if table == "FIRSTVOX.WORD_ENTRY":
                 self.write_words(csvWriter, rows)
+                return
+            if table == "FIRSTVOX.ORTHOGRAPHY":
+                self.write_file(csvWriter, rows, 5)
+                return
+            if table == "FIRSTVOX.PHRASE_CATEGORY":
+                self.write_file(csvWriter, rows, 2)
                 return
             to_csv = []
             for row in rows:
@@ -42,13 +47,23 @@ class Exporter:
             row[4] = self.categories.get(row[4])
             csvWriter.writerow(row)
 
+    def write_file(self, csvWriter, rows, index):
+        for row in rows:
+            row = list(row)
+            if row[index]:
+                if row[index].count('/'):
+                    row[index] = row[index][row[index].rindex('/')+1:]
+                else:
+                    row[index] = row[index][row[index].rindex('\\')+1:]
+            csvWriter.writerow(row)
+
     def main(self):
         tables = {"Words": ["ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, CATEGORY_ID, "
                             "ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, CONTRIBUTER, CULTURAL_NOTE, "
-                            "PHONETIC_INFO, REFERENCE, IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, "
+                            "PHONETIC_INFO, REFERENCE, " # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID,
                             "DOMINANT_LANGUAGE_DEFINITION", "FIRSTVOX.WORD_ENTRY", None],
-                  "Phrases": ["ID, PHRASE, DOMINANT_LANGUAGE_PHRASE, CATEGORY_ID, CONTRIBUTER, CULTURAL_NOTE, REFERENCE,"
-                              " IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID", "FIRSTVOX.PHRASE_ENTRY", None],
+                  "Phrases": ["ID, PHRASE, DOMINANT_LANGUAGE_PHRASE, CATEGORY_ID, CONTRIBUTER, CULTURAL_NOTE, REFERENCE"
+                              , "FIRSTVOX.PHRASE_ENTRY", None],  # " IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID"
                   # "Media": ["ID, FILENAME, DESCR, CONTRIBUTER, RECORDER, MEDIA_TYPE_ID, IS_SHARED", "FIRSTVOX.ENTRY_MEDIA", None],
                   # "": ["ID, NAME, ADMIN_EMAIL_ADDRESS, ADMIN_FIRST_NAME, ADMIN_LAST_NAME, "
                   #      "ADMIN_PHONE_NUMBER, CONTACT_INFORMATION"
@@ -64,16 +79,16 @@ class Exporter:
                   #      "PUBLIC_ACCESS, REGION, SOUND_MEDIA_FILENAME, SOUND_DESCRIPTION, SOUND_CONTRIBUTER, "
                   #      "SOUND_RECORDER, FRIENDLY_URL_SEGMENT", "FIRSTVOX.DICTIONARY", None],
                   "Alphabet": ["ID, CHAR_DATA, UPPER_CASE_CHAR_DATA, ALPH_ORDER, SAMPLE_WORD, SOUND_MEDIA_FILENAME, "
-                               "SOUND_DESCRIPTION, SOUND_CONTRIBUTER, SOUND_RECORDER", "FIRSTVOX.ORTHOGRAPHY", None],
+                               "SOUND_DESCRIPTION, SOUND_CONTRIBUTER, SOUND_RECORDER", "FIRSTVOX.ORTHOGRAPHY", "order by ALPH_ORDER"],
                   "PhraseBooks": ["ID, DESCR, IMAGE_FILENAME", "FIRSTVOX.PHRASE_CATEGORY", None],
                   "Songs": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, CULTURAL_NOTE, "
-                            "IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, ABORIGINAL_LANGUAGE_INTRO, "
+                            "ABORIGINAL_LANGUAGE_INTRO, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
                             "DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, CONTRIBUTER_REFERENCE, "
-                            "DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "SSTYPE_ID = 1"],
+                            "DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 1"],
                   "Stories": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, "
-                              "CULTURAL_NOTE, IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, "
+                              "CULTURAL_NOTE, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
                               "ABORIGINAL_LANGUAGE_INTRO, DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, "
-                              "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "SSTYPE_ID = 2"]}
+                              "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 2"]}
           ### book entries, private categories
         dialects = {}
         entries = self.legacy.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")

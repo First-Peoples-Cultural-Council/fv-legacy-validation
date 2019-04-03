@@ -7,8 +7,11 @@ class MediaFile(Item):
     def __init__(self, dialect, file_id, filename, description, user, contributor, recorder, type_id, shared, status):
         if filename is None:
             super().__init__(dialect, file_id, filename, user)
-        else:
+        elif filename.count('/'):
             super().__init__(dialect, file_id, filename[filename.rindex('/')+1:], user)
+        else:
+            super().__init__(dialect, file_id, filename[filename.rindex('\\')+1:], user)
+
         self.filename = filename
         self.description = description
         self.contributor = contributor
