@@ -1,5 +1,6 @@
 from src.Item import Item
 from src.MediaFile import UnEnteredMediaFile
+from src.LetterMapper import LetterMapper
 
 
 class Letter(Item):
@@ -22,8 +23,14 @@ class Letter(Item):
             self.audio_validate()
 
     def sample_validate(self):
-        if self.sample_word:
-            self.dialect.unentered_words.append(self.sample_word)
+        if self.sample_word and self.sample_word not in self.dialect.word_titles:
+            match = False
+            for word in self.dialect.word_titles:
+                if LetterMapper().compare(self.sample_word, word):
+                    match = True
+                    break
+            if not match:
+                self.dialect.unentered_words += 1
         self.validate_uid(self.sample_word, "fvcharacter:related_words", self.dialect.nuxeo_words.values())
 
     def audio_validate(self):
@@ -32,8 +39,16 @@ class Letter(Item):
         else:
             if self.audio[0].count('/'):
                 self.validate_uid(self.audio[0][self.audio[0].rindex('/')+1:], "fv:related_audio", self.dialect.nuxeo_audio.values())
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == self.audio[0]:
+                        print("~~~ unentered media found in media")
+                        return
             else:
                 self.validate_uid(self.audio[0][self.audio[0].rindex('\\')+1:], "fv:related_audio", self.dialect.nuxeo_audio.values())
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == self.audio[0]:
+                        print("~~~ unentered media found in media")
+                        return
             audio = UnEnteredMediaFile(self.dialect, self.audio[0], self.audio[1], self.audio[2], self.audio[3], 3, self.audio[4])
             audio.validate()
 

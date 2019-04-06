@@ -16,7 +16,18 @@ class PhraseBook(Item):
         if self.image is None:
             self.validate_uid(self.image, "fvcategory:image", self.dialect.nuxeo_imgs.values)
         else:
-            self.validate_uid(self.image[self.image.rindex('/')+1:], "fvcategory:image", self.dialect.nuxeo_imgs.values())
+            if self.image.count('/'):
+                self.validate_uid(self.image[self.image.rindex('/')+1:], "fvcategory:image", self.dialect.nuxeo_imgs.values())
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == self.image:
+                        print("~~~ unentered media found in media")
+                        return
+            else:
+                self.validate_uid(self.image[self.image.rindex('\\')+1:], "fvcategory:image", self.dialect.nuxeo_imgs.values())
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == self.image:
+                        print("~~~ unentered media found in media")
+                        return
             img = UnEnteredMediaFile(self.dialect, self.image, None, None, None, 1, None)
             img.validate()
 

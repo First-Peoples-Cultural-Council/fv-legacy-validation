@@ -39,16 +39,18 @@ class Portal(Item):
         while self.about.count(None) != 0:
             self.about.remove(None)
 
-        #if self.people_name is not None:
-        #    portal_about = '<p><strong>About The '+self.people_name+' people</strong></p><p>'+portal_about  # review, maybe add back??
-        # self.validate_text(portal_about, "fv-portal:about")
-        # portal_about = self.html_strip(portal_about).strip()
         if not self.about and not self.doc.get("fv-portal:about"):
             return True
-        if not self.about or not self.doc.get("fv-portal:about"):
+        if not self.about:
             self.dialect.flags.dataMismatch(self, "fv-portal:about", str(self.about), self.doc.get("fv-portal:about"))
             return False
+        self.about = [ x.strip() for x in self.about]
         portal_about = " ".join(self.about)
+        if self.people_name:
+            portal_about = '<p><strong>About The '+self.people_name+' people</strong></p><p>'+portal_about
+        if not self.doc.get("fv-portal:about"):
+            self.dialect.flags.dataMismatch(self, "fv-portal:about", str(self.about), self.doc.get("fv-portal:about"))
+            return False
         self.validate_text(portal_about, "fv-portal:about")
 
     def first_words_validate(self):  # check order too
@@ -59,17 +61,17 @@ class Portal(Item):
             if word is not None:
                 for legacy_word in self.dialect.legacy_words:
                     if word == legacy_word.id:
-                        doc_ids.append(legacy_word.doc.uid)
+                        # doc_ids.append(legacy_word.doc.uid)
                         word_titles.append(legacy_word.title)
                         break
 
-        if self.validate_text(doc_ids, 'fv-portal:featured_words'):
+        if self.validate_uid(word_titles, 'fv-portal:featured_words', self.dialect.nuxeo_words.values()):
             i=0
             for id in doc_ids:
                 if id != self.doc.get('fv-portal:featured_words')[i]:
                     for id in self.doc.get('fv-portal:featured_words'):
                         nux_titles.append(self.nuxeo.documents.get(uid=id).get("dc:title"))
-                    self.dialect.flags.dataMismatch(self, 'fv-portal:featured_words', word_titles,  nux_titles)
+                    self.dialect.flags.wrongOrder(self, 'fv-portal:featured_words', word_titles,  nux_titles)
                     break
 
     def column_validate(self):
@@ -101,11 +103,18 @@ class Portal(Item):
         if not filename:
             self.validate_uid(filename, nuxeo_str, nuxeo_docs)
         else:
-            self.validate_uid(filename[filename.rindex('/')+1:], nuxeo_str, nuxeo_docs)
-            for f in self.dialect.legacy_media.values():
-                if f.filename == filename or f.title == filename[filename.rindex('/')+1:]:
-                    print("unentered media found in media")
-                    return
+            if filename.count('/'):
+                self.validate_uid(filename[filename.rindex('/')+1:], nuxeo_str, nuxeo_docs)
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == filename:
+                        print("~~~ unentered media found in media")
+                        return
+            else:
+                self.validate_uid(filename[filename.rindex('\\')+1:], nuxeo_str, nuxeo_docs)
+                for f in self.dialect.legacy_media.values():
+                    if f.filename == filename:
+                        print("~~~ unentered media found in media")
+                        return
             media = UnEnteredMediaFile(self.dialect, filename, descr, contributor, recorder, type, status)
             media.validate()
 

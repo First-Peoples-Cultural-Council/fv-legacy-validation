@@ -1,4 +1,4 @@
-
+import re
 
 class Exceptions:
 
@@ -67,14 +67,23 @@ class Exceptions:
         group  = self.getGroup(item)[0]
         group.append(["File does not Exist", item.title, item.id, "File linked does not exist", "", "", "", ""])
 
-    def dataMismatch(self, item, nuxeo_str, expected, actual): # what to do when item is attached to another item?
+    def dataMismatch(self, item, nuxeo_str, expected, actual):  # what to do when item is attached to another item?
         group = self.getGroup(item)[0]
+        expected = self.remove_html(expected)
+        actual = self.remove_html(actual)
         self.item_update = self.toUpdate(item.doc, item.title, item.id, nuxeo_str, expected, actual)
         if not self.unexpectedProperty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) and \
             not self.propertyEmpty(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) and \
             not self.multipleContributors(group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid) \
             and not self.switched("Data Mismatch", group, item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid):
                 group.append(["Data Mismatch", item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid, self.item_update])
+
+    def wrongOrder(self, item, nuxeo_str, expected, actual):
+        group = self.getGroup(item)[0]
+        expected = self.remove_html(expected)
+        actual = self.remove_html(actual)
+        self.item_update = self.toUpdate(item.doc, item.title, item.id, nuxeo_str, expected, actual)
+        group.append(["Wrong Order", item.title, item.id, self.property_name[nuxeo_str], expected, actual, item.doc.uid, self.item_update])
 
     def propertyEmpty(self, group, title, id, property_name, expected, actual, uid):
         if not actual and not self.switched("Unexpected Property", group, title, id, property_name, expected, None, uid):
@@ -90,7 +99,7 @@ class Exceptions:
 
     def multipleContributors(self, group, title, id, property_name, expected, actual, uid):
         if property_name in ("Contributor", "Recorder", "Author") and len(expected) > 1:
-            group.append(["Multiple Contributors", title, id, "Contributors", expected, actual, uid, self.item_update])
+            group.append(["Multiple Contributors", title, id, property_name, expected, actual, uid, self.item_update])
             return True
         return False
 
@@ -151,4 +160,8 @@ class Exceptions:
             return True
         return False
 
+    def remove_html(self, text):
+        if text:
+            text = re.sub('<[^<]+?>', "", str(text))
+        return text
 

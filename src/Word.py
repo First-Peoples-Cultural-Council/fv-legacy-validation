@@ -41,11 +41,15 @@ class Word(Text):
 
     def phrase_validate(self):
         related_phrases = self.doc.get("fv-word:related_phrases")
-        if self.phrase is None and len(related_phrases) == 0:
+        if self.phrase is None and not related_phrases:
             return True
-        if self.phrase is None or len(related_phrases) == 0:
+        if self.phrase is None or not related_phrases:
             self.dialect.flags.dataMismatch(self, "fv-word:related_phrases", self.phrase, related_phrases)
             return False
+        for p in self.dialect.legacy_phrases:
+            if p.title == self.phrase and p.definition == self.phrase_def:
+                print("sample phrase found in phrases")
+                return
         phrase = SamplePhrase(self.dialect, related_phrases[0], self.phrase, self.phrase_def, self.user, self.contributor, self.children_archive, self.status)
         phrase.validate()
 

@@ -41,6 +41,7 @@ class Dialect(Item):
         self.language_group = self.Data.legacy_lang_grp[lang_group]
         self.language_family = self.Data.legacy_lang_fam[lang_fam]
         self.portal = None
+        self.word_titles = []
         self.legacy_words = []
         self.nuxeo_words = {}
         self.legacy_letters = []
@@ -60,7 +61,7 @@ class Dialect(Item):
         self.legacy_media = {}
         self.unentered_media = [0, 0, 0]
         self.unentered_phrases = 0
-        self.unentered_words = []
+        self.unentered_words = 0
         self.nuxeo_imgs = {}
         self.nuxeo_videos = {}
         self.nuxeo_audio = {}
@@ -166,6 +167,7 @@ class Dialect(Item):
             word = Word(self, r[0], r[1].strip(), r[2], self.Data.legacy_pos[r[3]], self.Data.legacy_categories[r[4]], r[5], r[6],
                         r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15], r[16], r[17], r[18])
             self.legacy_words.append(word)
+            self.word_titles.append(word.title)
 
             if r[12] is not None:
                 self.dialect_media.append(r[12])
@@ -448,16 +450,14 @@ class Dialect(Item):
         rows = self.legacy.execute("SELECT ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
                                    "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM "
                                    "FROM FIRSTVOX.ART_GALLERY_ENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
-        for r in rows:
-            image = GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "art", r[10])
-            self.art_gallery.append(image)
+
+        self.art_gallery = list(rows)
 
         rows = self.legacy.execute("SELECT ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
                                    "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM "
                                    "FROM FIRSTVOX.PHOTO_ALBUM_ENTRY WHERE DICTIONARY_ID = '"+str(self.id)+"'")
-        for r in rows:
-            image = GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "photo", r[10])
-            self.photo_gallery.append(image)
+
+        self.photo_gallery = list(rows)
 
     def get_links(self):
         rows = self.legacy.execute("SELECT INSTRUCTIONS_MEDIA_FILENAME, INSTRUCTIONS_DESCRIPTION, "
@@ -523,7 +523,7 @@ class Dialect(Item):
             nux_stories_entry += len(self.nuxeo.documents.get_children(uid=book.uid))
 
         errors = {"Alphabet": [self.flags.LetterErrors, self.flags.LetterQuality, len(self.legacy_letters), len(self.nuxeo_letters.values())],
-                  "Words": [self.flags.WordErrors, self.flags.WordQuality, len(self.legacy_words)+len(self.unentered_words), len(self.nuxeo_words.values())],
+                  "Words": [self.flags.WordErrors, self.flags.WordQuality, len(self.legacy_words)+self.unentered_words, len(self.nuxeo_words.values())],
                   "Phrases": [self.flags.PhraseErrors, self.flags.PhraseQuality, len(self.legacy_phrases)+self.unentered_phrases, len(self.nuxeo_phrases.values())],
                   "Phrase Books": [self.flags.PhraseBookErrors, self.flags.PhraseBookQuality, len(self.legacy_phrase_books), len(self.nuxeo_phrase_books.values())],
                   "Audio Files": [self.flags.AudioErrors, self.flags.AudioQuality, len(leg_audio)+self.unentered_media[2], len(self.nuxeo_audio.values())],
@@ -535,8 +535,8 @@ class Dialect(Item):
                   "Story Entries": [self.flags.StoryEntryErrors, self.flags.StoryEntryQuality, len(stories_entry), nux_stories_entry],  # attach entries to each book?
                   "Resource Links": [self.flags.LinkErrors, self.flags.LinkQuality, len(self.legacy_links), len(self.nuxeo_links)],
                   "Private Categories": [self.flags.CatErrors, self.flags.CatQuality, len(self.legacy_categories), len(self.nuxeo_categories.values())],
-                  "Portal Page": [self.flags.PortalErrors, self.flags.PortalQuality, "", ""],
-                  "Dialect Information": [self.flags.DialectErrors, self.flags.DialectQuality, "", ""]}
+                  "Portal Page ": [self.flags.PortalErrors, self.flags.PortalQuality, "", ""],
+                  "Dialect Information ": [self.flags.DialectErrors, self.flags.DialectQuality, "", ""]}
 
         error_info = [["Error Type", "Error Meaning"],
                       ["Item not Found", "The item from the legacy site cannot be found in the new site, it may have simply changed names it may not have been moved at all"],
@@ -545,7 +545,8 @@ class Dialect(Item):
                       ["Unexpected Property", "On the legacy site this item's property is empty but the new site it has a value"],
                       ["Data Mismatch", "The property for the item of that name contains a different value in the legacy site than the new site."],
                       ["Switched Definition and Literal Translation", "The definition and literal translation were in opposite places than expected. Values are given in order definition, literal translation"],
-                      ["Multiple Contributors", "On an item with multiple contributors, there might be only one combined contributer created in the new site or multiple incorrect contributors. Please review these."]]
+                      ["Multiple Contributors", "On an item with multiple contributors, there might be only one combined contributer created in the new site or multiple incorrect contributors. Please review these."],
+                      ["Wrong Order", "Data is correct, but seems to be in the wrong order."]]
 
         with open(self.title+'All.csv', mode='wb+') as overviewfile:
             csvWriter = csv.writer(overviewfile)
@@ -554,10 +555,7 @@ class Dialect(Item):
                 if type == "Audio Files":
                     csvWriter.writerow(["Media Files", leg_media_err, leg_media, len(self.nuxeo_audio)+len(self.nuxeo_videos)+len(self.nuxeo_imgs)])
                 csvWriter.writerow([type, len(errors.get(type)[0]), errors.get(type)[2],  errors.get(type)[3]])
-            i = 0
-            for w in self.unentered_words:
-                if w not in self.legacy_words:
-                    i += 1
+
             csvWriter.writerow([])
             csvWriter.writerow(["Quality Check Errors"])
             csvWriter.writerow(["Type", "Errors"])
@@ -568,10 +566,6 @@ class Dialect(Item):
                 csvWriter.writerow([type, len(errors.get(type)[1])])
                 # for err in err_types:
                 #     csvWriter.writerow(["", type[:len(type)-1]+err, err_types.get(err)])
-
-            print('new unentered words: : : :')
-            print(len(self.unentered_words))
-            print(i)
 
         with open(self.title+'AllErrors.csv', mode='wb+') as detailfile:  # media files only put as subsection under other types??
             csvWriter = csv.writer(detailfile)
@@ -637,69 +631,6 @@ class Dialect(Item):
         for error in self.flags.update:
             Updater().update_property(error[1], error[6], error[7])
             print(str(error[1])+" "+str(error[2])+" "+str(error[3])+" "+str(error[4])+" "+str(error[5])+" "+str(error[6])+" "+str(error[7]))
-
-    def create_galleries(self):  # create_doc( path, name, type, properties), properties must have dc:title
-        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Language))))"
-        updater = Updater()
-        if self.art_gallery:
-            related_pics = []
-            for pic in self.art_gallery:
-                source = []
-                recorder = []
-                change = None
-                if pic.change:
-                    change = str(pic.change)[2:10]
-                if pic.recorder:
-                    recs = re.split(match, pic.recorder, re.IGNORECASE)
-                    recs = [con for con in recs if con not in [",", "/", "", " and ", " & "] and con is not None]
-                    for name in recs:
-                        rec = updater.create_doc(self.doc.path+"/Contributors/", name, "FVContributor", {'dc:title': name})
-                        recorder.append(rec.uid)
-                if pic.contributor:
-                    cons = re.split(match, pic.recorder, re.IGNORECASE)
-                    cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
-                    for name in cons:
-                        con = updater.create_doc(self.doc.path+"/Contributors/", pic.contributor, "FVContributor", {'dc:title': pic.contributor})
-                        source.append(con.uid)
-
-                pic_properties = {'dc:title': pic.title, "fvm:source": source, "fvm:recorder": recorder, "dc:description": pic.description,
-                                  "fvl:import_id": pic.id, "fvl:change_date": change, "fvl:status_id": pic.status}
-                pic = updater.create_doc(self.doc.path+"/Resources/", pic.title, "FVPicture", pic_properties)
-                related_pics.append(pic.uid)
-
-            art_gal = updater.create_doc(self.doc.path+"/Portal/", "Art Gallery", "FVGallery", {'dc:title': "Art Gallery",
-                                                                                                "fv:related_pictures": related_pics})
-
-        if self.photo_gallery:
-            related_pics = []
-            for pic in self.photo_gallery:
-                source = []
-                recorder = []
-                change = None
-                if pic.change:
-                    change = str(pic.change)[2:10]
-                if pic.recorder:
-                    recs = re.split(match, pic.recorder, re.IGNORECASE)
-                    recs = [con for con in recs if con not in [",", "/", "", " and ", " & "] and con is not None]
-                    for name in recs:
-                        rec = updater.create_doc(self.doc.path+"/Contributors/", name, "FVContributor", {'dc:title': name})
-                        recorder.append(rec.uid)
-                if pic.contributor:
-                    cons = re.split(match, pic.recorder, re.IGNORECASE)
-                    cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
-                    for name in cons:
-                        con = updater.create_doc(self.doc.path+"/Contributors/", pic.contributor, "FVContributor", {'dc:title': pic.contributor})
-                        source.append(con.uid)
-
-                pic_properties = {'dc:title': pic.title, "fvm:source": source, "fvm:recorder": recorder, "dc:description": pic.description,
-                                  "fvl:import_id": pic.id, "fvl:change_date": change, "fvl:status_id": pic.status}
-                pic = updater.create_doc(self.doc.path+"/Resources/", pic.title, "FVPicture", pic_properties)
-                related_pics.append(pic.uid)
-
-            photo_gal = updater.create_doc(self.doc.path+"/Portal/", "Photo Gallery", "FVGallery", {'dc:title': "Photo Gallery",
-                                                                                                "fv:related_pictures": related_pics})
-                # how to update state, create not published
-
 
 # ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
 #     "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM

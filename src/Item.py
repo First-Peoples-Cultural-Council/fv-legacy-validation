@@ -45,16 +45,16 @@ class Item:
         if not legacy_name or not self.doc.get(nuxeo_str):
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, self.doc.get(nuxeo_str))
             return False
-        if self.doc.get(nuxeo_str).count("<br />") != 0:
+        if self.doc.get(nuxeo_str).count("<br />"):
             legacy_name = legacy_name.replace("\r\n", "<br />")
         if not isinstance(legacy_name, str):
-            nuxeo_values = [name.replace("</p>", "").replace("<p>", "") for name in self.doc.get(nuxeo_str)]
+            nuxeo_values = [self.html_strip(name) for name in self.doc.get(nuxeo_str)]
             for name in legacy_name:
-                name = name.replace("</p>", "").replace("<p>", "")
-                if name.strip() not in nuxeo_values:
+                name = self.html_strip(name)
+                if name not in nuxeo_values:
                     match = False
                     for nux in nuxeo_values:
-                        if LetterMapper().compare(name.strip(), nux.strip()):
+                        if LetterMapper().compare(name, nux):
                             match = True
                             break
                     if not match:
@@ -65,13 +65,12 @@ class Item:
                         return False
             return True
         else:
-            legacy_name.replace("</p>", "").replace("<p>", "")
-            nuxeo_value = self.doc.get(nuxeo_str).replace("</p>", "").replace("<p>", "")
-            if legacy_name.strip() != nuxeo_value.strip():
-                if not LetterMapper().compare(legacy_name.strip(), nuxeo_value.strip()):
+            nuxeo_value = self.html_strip(self.doc.get(nuxeo_str))
+            if self.html_strip(legacy_name) != nuxeo_value:
+                if not LetterMapper().compare(self.html_strip(legacy_name), nuxeo_value):
                     self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_value)
-                    print(legacy_name.strip())
-                    print(nuxeo_value.strip())
+                    print(self.html_strip(legacy_name))
+                    print(nuxeo_value)
                     print(str(self.__class__) + str(self.id))
                     return False
             return True
@@ -92,21 +91,21 @@ class Item:
 
     def validate_translation(self, legacy_def, nuxeo_str):
         definitions = self.doc.get(nuxeo_str)
-        if legacy_def is None and len(definitions) == 0:
+        if legacy_def is None and not definitions:
             return True
-        if len(definitions) == 0:
+        if not definitions:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, None)
             return False
         if legacy_def is None:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, definitions[0]['translation'])
             return False
-        if definitions[0]['translation'].count("<br />") != 0:
+        if definitions[0]['translation'].count("<br />"):
             legacy_def = legacy_def.replace("\r\n", "<br />")
-        if legacy_def != definitions[0]['translation']:
-            if not LetterMapper().compare(legacy_def, definitions[0]['translation']):
+        if self.html_strip(legacy_def) != self.html_strip(definitions[0]['translation']):
+            if not LetterMapper().compare(self.html_strip(legacy_def), self.html_strip(definitions[0]['translation'])):
                 self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_def, definitions[0]['translation'])
-                print(legacy_def)
-                print(definitions[0]['translation'])
+                print(self.html_strip(legacy_def))
+                print(self.html_strip(definitions[0]['translation']))
                 print("text defs don't match")
                 print(str(self.__class__) + str(self.id))
                 return False
@@ -139,18 +138,30 @@ class Item:
         if not isinstance(legacy_name, str):
             for name in legacy_name:
                 if name not in nuxeo_titles:
+                    match = False
+                    for title in nuxeo_titles:
+                        if LetterMapper().compare(name, title):
+                            match = True
+                            break
+                    if not match:
+                        self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
+                        print(legacy_name)
+                        print(nuxeo_titles)
+                        print(str(self.__class__) + str(self.id))
+                        return False
+        else:
+            if legacy_name not in nuxeo_titles:
+                match = False
+                for title in nuxeo_titles:
+                    LetterMapper().compare(legacy_name.strip(), title.strip())
+                    match = True
+                    break
+                if not match:
                     self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
                     print(legacy_name)
                     print(nuxeo_titles)
                     print(str(self.__class__) + str(self.id))
                     return False
-        else:
-            if legacy_name not in nuxeo_titles:
-                self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_name, nuxeo_titles)
-                print(legacy_name)
-                print(nuxeo_titles)
-                print(str(self.__class__) + str(self.id))
-                return False
 
     def title_validate(self):
         self.validate_text(self.title, "dc:title")
@@ -173,7 +184,7 @@ class Item:
         if not legacy_contributor:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, sources)
             return False
-        match = "(^[^(https:\/\/)|(www.)].*)((?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|(?:(( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Language))))"
+        match = r"^(?!(http[s]?:\/\/)|(www\.))((?:.*?)(?:(?!.\d)([,/](?!( S[rR])|( Elder)))|((( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Herring)|(Learn)|(Language)))))+"
         contributors = re.split(match, legacy_contributor, re.IGNORECASE)
         contributors = [con for con in contributors if con not in [",", "/", "", " and ", " & "] and con is not None]
         for con in contributors:
@@ -222,4 +233,4 @@ class Item:
         return connect.status_code in [200, 302]
 
     def html_strip(self, html_string):
-        return re.sub('<[^<]+?>', '', html_string)
+        return re.sub('<[^<]+?>', '', str(html_string)).strip()

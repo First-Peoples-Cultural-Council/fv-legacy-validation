@@ -46,7 +46,7 @@ class MediaFile(Item):
             self.dialect.flags.missingData(self, "dc:title")
         if not self.doc.get("fvm:recorder"):
             self.dialect.flags.missingData(self, "fvm:recorder")
-        if not self.doc.get("file:content").get("data"):
+        if not self.doc.get("file:content") or not self.doc.get("file:content").get("data"):
             self.dialect.flags.missingData(self, "file:content")
 
 
