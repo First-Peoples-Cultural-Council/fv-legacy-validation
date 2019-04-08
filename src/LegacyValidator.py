@@ -127,16 +127,17 @@ class LegacyValidator:
         entries = self.cur.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")
         for r in entries:
             if self.data.nuxeo_dialects.get(r[0]):
-                self._upload(r[1], path, self.data.nuxeo_dialects.get(r[0]).path)
+                self.upload(r[1]+'.csv', path, self.data.nuxeo_dialects.get(r[0]).path)
+                self.upload(r[1]+"Errors.csv", path, self.data.nuxeo_dialects.get(r[0]).path)
             else:
-                print(str(r[0])+" "+str(r[1]))
+                print(str(r[0])+" "+str(r[1])+" does not exist")
 
-    def _upload(self, title, file_path, nuxeo_path):  # file_path = path to directory where reports are, nuxeo_path = parent path to put links
+    def upload(self, title, file_path, nuxeo_path):  # file_path = path to directory where reports are, nuxeo_path = parent path to put links
         title = title.replace(" ", "").replace("/", "")
-        if os.path.isfile(file_path+'\\'+title+'.csv'):
-            Updater().create_doc(nuxeo_path+"/Links", title+'.csv', "FVLink", {'dc:title': title}, file_path+'\\'+title+'.csv')
-        if os.path.isfile(file_path+'\\'+title+'Errors.csv'):
-            Updater().create_doc(nuxeo_path+"/Links", title+"Errors.csv", "FVLink", {'dc:title': title}, file_path+title+'\\'+'Errors.csv')
+        if file_path.count("\\"):
+            file_path = file_path.replace("\\", "/")
+        if os.path.isfile(file_path+'/'+title):
+            Updater().create_doc(nuxeo_path+"/Links", title, "FVLink", {'dc:title': title}, file_path+'/'+title)
 
 
 lv = LegacyValidator()
