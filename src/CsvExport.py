@@ -1,17 +1,28 @@
 import unicodecsv as csv
 from src.authorization import Authorize
+from nuxeo.client import Nuxeo
+from src.Updater import Updater
+from nuxeo.exceptions import HTTPError
+import os
 
 
 class Exporter:
 
     def __init__(self):
         self.legacy = Authorize.cursor
+        self.nuxeo = Authorize.nuxeo
+        self.dialects = {}
         self.categories = {}
         self.pos = {}
         self.status_id = {}
         self.roles = {}
         self.countries = {}
         self.ages = {}
+
+        entries = self.legacy.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")
+
+        for r in entries:
+            self.dialects[r[0]] = r[1].replace(" ", "").replace("/", "")
 
         rows = self.legacy.execute("select ID, CODE from FIRSTVOX.WORD_CATEGORY")
         for r in rows:
@@ -36,6 +47,38 @@ class Exporter:
         rows = self.legacy.execute("select ID, DESCR from FIRSTVOX.AGE")
         for r in rows:
             self.ages[r[0]] = r[1]
+
+        self.tables = {"Words": ["ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, CATEGORY_ID, "
+                       "ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, CONTRIBUTER, CULTURAL_NOTE, "
+                       "PHONETIC_INFO, REFERENCE, " # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID,
+                       "DOMINANT_LANGUAGE_DEFINITION", "FIRSTVOX.WORD_ENTRY", None],
+                  "Phrases": ["ID, PHRASE, DOMINANT_LANGUAGE_PHRASE, CATEGORY_ID, CONTRIBUTER, CULTURAL_NOTE, REFERENCE"
+                      , "FIRSTVOX.PHRASE_ENTRY", None],  # " IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID"
+                  # "Media": ["ID, FILENAME, DESCR, CONTRIBUTER, RECORDER, MEDIA_TYPE_ID, IS_SHARED", "FIRSTVOX.ENTRY_MEDIA", None],
+                  # "": ["ID, NAME, ADMIN_EMAIL_ADDRESS, ADMIN_FIRST_NAME, ADMIN_LAST_NAME, "
+                  #      "ADMIN_PHONE_NUMBER, CONTACT_INFORMATION"
+                  #      ", CONTACT_INFORMATION2, CONTACT_INFORMATION3, CONTACT_INFORMATION4, COUNTRY_ID, DESCR, "
+                  #      "DESCR2, DESCR3, DESCR4, DOMINANT_LANGUAGE, DOMINANT_LANGUAGE_FR, FIRST_WORD_ONE_ID, "
+                  #      "FIRST_WORD_TWO_ID, FIRST_WORD_THREE_ID, FIRST_WORD_FOUR_ID, FIRST_WORD_FIVE_ID, "
+                  #      "GRAMMAR_RULES_NAME, GRAMMAR_RULES_DESCRIPTION, GRAMMAR_RULES_CONTRIBUTER, "
+                  #      "GRAMMAR_RULES_MEDIA_FILENAME, GRAMMAR_RULES_RECORDER, IMAGE_MEDIA_FILENAME, IMAGE_DESCRIPTION, "
+                  #      "IMAGE_RECORDER, IMAGE_CONTRIBUTER, LANG_GRP_ID, LANGUAGE_FAMILY_ID, PORTAL_ABOUT_MORE, "
+                  #      "PORTAL_ABOUT_MORE_2, PORTAL_ABOUT_TEXT, PORTAL_GREETING, PORTAL_COLUMN_TITLE, PORTAL_COLUMN_TEXT, "
+                  #      "PORTAL_PEOPLE_NAME, PORTAL_RELATED_LINKS, PRONUNCIATION_GUIDE_FILENAME, PRONUNCIATION_NAME, "
+                  #      "PRONUNCIATION_GUIDE_DESCR, PRONUNCIATION_GUIDE_RECORDER, PRONUNCIATION_GUIDE_CONTRIB, "
+                  #      "PUBLIC_ACCESS, REGION, SOUND_MEDIA_FILENAME, SOUND_DESCRIPTION, SOUND_CONTRIBUTER, "
+                  #      "SOUND_RECORDER, FRIENDLY_URL_SEGMENT", "FIRSTVOX.DICTIONARY", None],
+                  "Alphabet": ["ID, CHAR_DATA, UPPER_CASE_CHAR_DATA, ALPH_ORDER, SAMPLE_WORD, SOUND_MEDIA_FILENAME, "
+                               "SOUND_DESCRIPTION, SOUND_CONTRIBUTER, SOUND_RECORDER", "FIRSTVOX.ORTHOGRAPHY", "order by ALPH_ORDER"],
+                  "PhraseBooks": ["ID, DESCR, IMAGE_FILENAME", "FIRSTVOX.PHRASE_CATEGORY", None],
+                  "Songs": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, CULTURAL_NOTE, "
+                            "ABORIGINAL_LANGUAGE_INTRO, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
+                            "DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, CONTRIBUTER_REFERENCE, "
+                            "DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 1"],
+                  "Stories": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, "
+                              "CULTURAL_NOTE, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
+                              "ABORIGINAL_LANGUAGE_INTRO, DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, "
+                              "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 2"]}
 
     def export(self, dialect, title, headers, table, where=None):
         print(title)
@@ -105,51 +148,48 @@ class Exporter:
             csvWriter.writerows(to_csv)
 
     def main(self):
-        tables = {"Words": ["ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, CATEGORY_ID, "
-                            "ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, CONTRIBUTER, CULTURAL_NOTE, "
-                            "PHONETIC_INFO, REFERENCE, " # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID,
-                            "DOMINANT_LANGUAGE_DEFINITION", "FIRSTVOX.WORD_ENTRY", None],
-                  "Phrases": ["ID, PHRASE, DOMINANT_LANGUAGE_PHRASE, CATEGORY_ID, CONTRIBUTER, CULTURAL_NOTE, REFERENCE"
-                              , "FIRSTVOX.PHRASE_ENTRY", None],  # " IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID"
-                  # "Media": ["ID, FILENAME, DESCR, CONTRIBUTER, RECORDER, MEDIA_TYPE_ID, IS_SHARED", "FIRSTVOX.ENTRY_MEDIA", None],
-                  # "": ["ID, NAME, ADMIN_EMAIL_ADDRESS, ADMIN_FIRST_NAME, ADMIN_LAST_NAME, "
-                  #      "ADMIN_PHONE_NUMBER, CONTACT_INFORMATION"
-                  #      ", CONTACT_INFORMATION2, CONTACT_INFORMATION3, CONTACT_INFORMATION4, COUNTRY_ID, DESCR, "
-                  #      "DESCR2, DESCR3, DESCR4, DOMINANT_LANGUAGE, DOMINANT_LANGUAGE_FR, FIRST_WORD_ONE_ID, "
-                  #      "FIRST_WORD_TWO_ID, FIRST_WORD_THREE_ID, FIRST_WORD_FOUR_ID, FIRST_WORD_FIVE_ID, "
-                  #      "GRAMMAR_RULES_NAME, GRAMMAR_RULES_DESCRIPTION, GRAMMAR_RULES_CONTRIBUTER, "
-                  #      "GRAMMAR_RULES_MEDIA_FILENAME, GRAMMAR_RULES_RECORDER, IMAGE_MEDIA_FILENAME, IMAGE_DESCRIPTION, "
-                  #      "IMAGE_RECORDER, IMAGE_CONTRIBUTER, LANG_GRP_ID, LANGUAGE_FAMILY_ID, PORTAL_ABOUT_MORE, "
-                  #      "PORTAL_ABOUT_MORE_2, PORTAL_ABOUT_TEXT, PORTAL_GREETING, PORTAL_COLUMN_TITLE, PORTAL_COLUMN_TEXT, "
-                  #      "PORTAL_PEOPLE_NAME, PORTAL_RELATED_LINKS, PRONUNCIATION_GUIDE_FILENAME, PRONUNCIATION_NAME, "
-                  #      "PRONUNCIATION_GUIDE_DESCR, PRONUNCIATION_GUIDE_RECORDER, PRONUNCIATION_GUIDE_CONTRIB, "
-                  #      "PUBLIC_ACCESS, REGION, SOUND_MEDIA_FILENAME, SOUND_DESCRIPTION, SOUND_CONTRIBUTER, "
-                  #      "SOUND_RECORDER, FRIENDLY_URL_SEGMENT", "FIRSTVOX.DICTIONARY", None],
-                  "Alphabet": ["ID, CHAR_DATA, UPPER_CASE_CHAR_DATA, ALPH_ORDER, SAMPLE_WORD, SOUND_MEDIA_FILENAME, "
-                               "SOUND_DESCRIPTION, SOUND_CONTRIBUTER, SOUND_RECORDER", "FIRSTVOX.ORTHOGRAPHY", "order by ALPH_ORDER"],
-                  "PhraseBooks": ["ID, DESCR, IMAGE_FILENAME", "FIRSTVOX.PHRASE_CATEGORY", None],
-                  "Songs": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, CULTURAL_NOTE, "
-                            "ABORIGINAL_LANGUAGE_INTRO, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
-                            "DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, CONTRIBUTER_REFERENCE, "
-                            "DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 1"],
-                  "Stories": ["ID, ABORIGINAL_LANGUAGE_TITLE, DOMINANT_LANGUAGE_TITLE, CONTRIBUTER, "
-                              "CULTURAL_NOTE, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
-                              "ABORIGINAL_LANGUAGE_INTRO, DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, "
-                              "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 2"]}
+
         users = "ID, EMAIL, FIRST_NAME, LAST_NAME, TRIBE_AFFIL, ROLE, RECORDER_REQUIRES_APPROVAL, ADDRESS, CITY, PROVINCE," \
-                " ZIP, COUNTRY, FAX, PHONE, AGE, DATE_AGE_RECORDED, GENDER, STATUS,"
-          ### book entries, private categories
-        dialects = {}
-        entries = self.legacy.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")
+                " ZIP, COUNTRY, FAX, PHONE, AGE, DATE_AGE_RECORDED, GENDER, STATUS"
+          ### book entries
 
-        for r in entries:
-            dialects[r[0]] = r[1].replace(" ", "").replace("/", "")
+        for dialect in self.dialects:
+            for type in self.tables:
+                self.export(dialect, self.dialects.get(dialect)+type+".csv" ,self.tables.get(type)[0], self.tables.get(type)[1], self.tables.get(type)[2])
+            self.user_export(dialect, self.dialects.get(dialect)+"Users"+".csv", users)
 
-        for dialect in dialects:
-            for type in tables:
-                self.export(dialect, dialects.get(dialect)+type+".csv" ,tables.get(type)[0], tables.get(type)[1], tables.get(type)[2])
-            self.user_export(dialect, dialects.get(dialect)+"Users"+".csv", users)
+    def upload_reports(self, path):
+        nuxeo_dialects = {}
+        got_dialects = False
+        dialects = None
+        while not got_dialects:
+            try:
+                dialects = self.nuxeo.documents.query(opts={'query': "SELECT * FROM FVDialect "
+                                                                "WHERE ecm:path STARTSWITH '/FV/Workspaces/Data'"})
+                got_dialects = True
+            except HTTPError:
+                nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
+
+        entries = dialects.get("entries")
+        for item in entries:
+            nuxeo_dialects[item.get("fvl:import_id")] = item
+        for dialect in self.dialects:
+            if nuxeo_dialects.get(dialect):
+                for type in self.tables:
+                    self.upload(self.dialects.get(dialect)+type+".csv", path, nuxeo_dialects.get(dialect).path)
+                self.upload(self.dialects.get(dialect)+"Users.csv", path, nuxeo_dialects.get(dialect).path)
+            else:
+                print(self.dialects.get(dialect)+" does not exist in nuxeo")
+
+    def upload(self, title, file_path, nuxeo_path):
+        title = title.replace(" ", "").replace("/", "")
+        if file_path.count("\\"):
+            file_path = file_path.replace("\\", "/")
+        if os.path.isfile(file_path+'/'+title):
+            Updater().create_doc(nuxeo_path+"/Links", title, "FVLink", {'dc:title': title}, file_path+'/'+title)
 
 
-Exporter().main()
+ex = Exporter()
+ex.main()
+# ex.upload_reports(os.getcwd())
 
