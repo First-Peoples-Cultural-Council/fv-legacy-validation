@@ -8,6 +8,10 @@ class Exporter:
         self.legacy = Authorize.cursor
         self.categories = {}
         self.pos = {}
+        self.status_id = {}
+        self.roles = {}
+        self.countries = {}
+        self.ages = {}
 
         rows = self.legacy.execute("select ID, CODE from FIRSTVOX.WORD_CATEGORY")
         for r in rows:
@@ -16,6 +20,22 @@ class Exporter:
         rows = self.legacy.execute("select ID, CODE from FIRSTVOX.PART_OF_SPEECH")
         for r in rows:
             self.pos[r[0]] = r[1].lower().capitalize()
+
+        rows = self.legacy.execute("select ID, CODE from FIRSTVOX.STATUS")
+        for r in rows:
+            self.status_id[r[0]] = r[1]
+
+        rows = self.legacy.execute("select ID, DESCR from FIRSTVOX.ROLE")
+        for r in rows:
+            self.roles[r[0]] = r[1]
+
+        rows = self.legacy.execute("select ID, DESCR from FIRSTVOX.COUNTRY")
+        for r in rows:
+            self.countries[r[0]] = r[1]
+
+        rows = self.legacy.execute("select ID, DESCR from FIRSTVOX.AGE")
+        for r in rows:
+            self.ages[r[0]] = r[1]
 
     def export(self, dialect, title, headers, table, where=None):
         print(title)
@@ -57,6 +77,33 @@ class Exporter:
                     row[index] = row[index][row[index].rindex('\\')+1:]
             csvWriter.writerow(row)
 
+    def user_export(self, dialect, title, headers):
+        user_id = {}
+        rows = self.legacy.execute("select USR_ID, ROLE_ID, RECORDER_REQUIRES_APPROVAL "
+                                   "from FIRSTVOX.USR_DICTIONARY where DICTIONARY_ID = '"+str(dialect)+"'")
+        for r in rows:
+            user_id[r[0]] = [r[1], r[2]]
+
+        rows = self.legacy.execute("select ID, EMAIL, FIRST_NAME, LAST_NAME, TRIBE_AFFIL, ADDRESS1, CITY, PROVINCE, ZIP, "
+                                   "COUNTRY_ID, FAX, PHONE1, AGE_ID, AGE_DATE, GENDER, STATUS_ID "
+                                   "from FIRSTVOX.USR where ID in "+str(tuple(user_id.keys()))+"")
+
+        with open(title, mode='wb') as csvfile:
+            csvWriter = csv.writer(csvfile)
+            csvWriter.writerow(headers.split(","))
+            to_csv = []
+            for row in rows:
+                row = list(row)
+                row.insert(5, user_id.get(row[0])[0])
+                row.insert(6, user_id.get(row[0])[1])
+                row[5] = self.roles.get(row[5])
+                row[11] = self.countries.get(row[11])
+                row[14] = self.ages.get(row[14])
+                row[17] = self.status_id.get(row[17])
+                to_csv.append(row)
+
+            csvWriter.writerows(to_csv)
+
     def main(self):
         tables = {"Words": ["ID, WORD_VALUE, DOMINANT_LANGUAGE_WORD_VALUE, PART_OF_SPEECH_ID, CATEGORY_ID, "
                             "ABORIGINAL_LANGUAGE_SENTENCE, DOMINANT_LANGUAGE_SENTENCE, CONTRIBUTER, CULTURAL_NOTE, "
@@ -89,6 +136,8 @@ class Exporter:
                               "CULTURAL_NOTE, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
                               "ABORIGINAL_LANGUAGE_INTRO, DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, "
                               "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 2"]}
+        users = "ID, EMAIL, FIRST_NAME, LAST_NAME, TRIBE_AFFIL, ROLE, RECORDER_REQUIRES_APPROVAL, ADDRESS, CITY, PROVINCE," \
+                " ZIP, COUNTRY, FAX, PHONE, AGE, DATE_AGE_RECORDED, GENDER, STATUS,"
           ### book entries, private categories
         dialects = {}
         entries = self.legacy.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")
@@ -99,6 +148,8 @@ class Exporter:
         for dialect in dialects:
             for type in tables:
                 self.export(dialect, dialects.get(dialect)+type+".csv" ,tables.get(type)[0], tables.get(type)[1], tables.get(type)[2])
+            self.user_export(dialect, dialects.get(dialect)+"Users"+".csv", users)
+
 
 Exporter().main()
 
