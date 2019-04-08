@@ -59,7 +59,7 @@ def validate_dialect(dialect_id):
                     dialect.get_attributes()
                     dialect.validate()
                     dialect.report()
-                    # dialect.update_dialect()
+                    # dialect.update_dialect()  # uncomment to update flagged properties in Flags.update_names
                     print(str(dialect.id)+" "+dialect.title+" is complete")
                     break
                 except ConnectionError as connect:
@@ -88,20 +88,22 @@ def upload_reports(ids, exporter, path=os.getcwd()):  # uploads any already crea
 def main():
     ids = {}  # legacy {id: name} of specific dialects to validate
 
-    entries = cur.execute("SELECT ID, NAME FROM FIRSTVOX.DICTIONARY")
+    entries = cur.execute("select ID, NAME from FIRSTVOX.DICTIONARY")  # queries all dialects to validate
     for r in entries:
         ids[r[0]] = r[1]
 
     exporter = Exporter()
-    # exporter.export_dialects(ids)
-    # exporter.upload_reports(ids)
-
-    # upload_reports(ids, exporter)
+    # exporter.export_dialects(ids)  # creates csvs of legacy data
+    # exporter.upload_reports(ids)   # uploads those lists
+                                     # optional path parameter to directory where reports are stored (default is current directory)
 
     for dialect_id in ids.keys():
-        validate_dialect(dialect_id)
+        validate_dialect(dialect_id)  # gather and validates dialect data, creates reports for dialect/errors
+                                      # if dialect.update() uncommented in validate_dialect() will fix small discrepencies
 
-    # gallery_creator = Gallery()
+    # upload_reports(ids, exporter)  # uploads csv dialect/error reports from validation
+
+    gallery_creator = Gallery()
     # for dialect_id in ids.keys():
     #     gallery_creator.create_galleries(dialect_id)  # transfers art and photo galleries from legacy db to nuxeo
 

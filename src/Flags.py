@@ -38,6 +38,7 @@ class Exceptions:
         self.item_update = False
         self.update = []
         self.update_names = ["fvl:change_date", "fvl:status_id", "fv:available_in_childrens_archive", "fvm:shared", "fvcharacter:extended", "fvl:assigned_usr_id"]
+
         self.types = {"<class 'src.Portal.Portal'>": [self.PortalErrors, self.PortalQuality], "<class 'src.Link.Link'>": [self.LinkErrors, self.LinkQuality],
                       "<class 'src.Dialect.Dialect'>": [self.DialectErrors, self.DialectQuality], "<class 'src.Word.Word'>": [self.WordErrors, self.WordQuality],
                       "<class 'src.Category.PhraseBook'>": [self.PhraseBookErrors, self.PhraseBookQuality], "<class 'src.Phrase.Phrase'>": [self.PhraseErrors, self.PhraseQuality],
