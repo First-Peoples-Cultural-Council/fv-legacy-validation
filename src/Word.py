@@ -41,16 +41,27 @@ class Word(Text):
 
     def phrase_validate(self):
         related_phrases = self.doc.get("fv-word:related_phrases")
-        if self.phrase is None and not related_phrases:
+        if not self.phrase and not related_phrases:
             return True
-        if self.phrase is None or not related_phrases:
+        if not self.phrase:
             self.dialect.flags.dataMismatch(self, "fv-word:related_phrases", self.phrase, related_phrases)
             return False
+        phrase = None
         for p in self.dialect.legacy_phrases:
-            if p.title == self.phrase and p.definition == self.phrase_def:
+            if p.title.strip() == self.phrase.strip() and p.definition.strip() == self.phrase_def.strip():
+                phrase = p
                 print("sample phrase found in phrases")
-                return
-        phrase = SamplePhrase(self.dialect, related_phrases[0], self.phrase, self.phrase_def, self.user, self.contributor, self.children_archive, self.status)
-        phrase.validate()
+                break
+        if not related_phrases:
+            self.dialect.flags.dataMismatch(self, "fv-word:related_phrases", self.phrase, related_phrases)
+            if not phrase:
+                phrase = SamplePhrase(self.dialect, related_phrases[0], self.phrase, self.phrase_def, self.user, self.contributor, self.children_archive, self.status)
+                self.dialect.flags.itemNotFound(phrase)
+                return False
+        if not phrase:
+            phrase = SamplePhrase(self.dialect, related_phrases[0], self.phrase, self.phrase_def, self.user, self.contributor, self.children_archive, self.status)
+            phrase.validate()
+        self.validate_text(phrase.title, "fv-word:related_phrases")
+
 
 

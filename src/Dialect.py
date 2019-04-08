@@ -107,12 +107,6 @@ class Dialect(Item):
             self.validate_text(self.region, "fvdialect:region")
             self.validate_uid(self.language_family, "fva:language", self.Data.nuxeo_lang_fam)
             self.validate_uid(self.language_group, "fva:family", self.Data.nuxeo_lang_grp)
-            if self.public:
-                if self.doc.state != "New" and self.doc.state != "Published":  # review what to do w these
-                    print("~~~ should not be state "+str(self.id))
-            else:
-                if self.doc.state != "New" and self.doc.state != "Enabled":
-                    print("~~~ should not be state "+str(self.id))
 
     def description_validate(self):
         while self.description.count(None) != 0:

@@ -41,7 +41,8 @@ class Exceptions:
         self.types = {"<class 'src.Portal.Portal'>": [self.PortalErrors, self.PortalQuality], "<class 'src.Link.Link'>": [self.LinkErrors, self.LinkQuality],
                       "<class 'src.Dialect.Dialect'>": [self.DialectErrors, self.DialectQuality], "<class 'src.Word.Word'>": [self.WordErrors, self.WordQuality],
                       "<class 'src.Category.PhraseBook'>": [self.PhraseBookErrors, self.PhraseBookQuality], "<class 'src.Phrase.Phrase'>": [self.PhraseErrors, self.PhraseQuality],
-                      "<class 'src.Letter.Letter'>": [self.LetterErrors, self.LetterQuality], "<class 'src.Category.Category'>": [self.CatErrors, self.CatQuality]}
+                      "<class 'src.Letter.Letter'>": [self.LetterErrors, self.LetterQuality], "<class 'src.Category.Category'>": [self.CatErrors, self.CatQuality],
+                      "<class 'src.Phrase.SamplePhrase'>": [self.PhraseErrors, self.PhraseQuality]}
         self.property_name = {"fvl:status_id": "Status", "fvl:change_date": "Legacy Change Date", "fvl:assigned_usr_id": "Assigned User", "dc:title": "Title",
                               "fv:source": "Contributor", "fv:definitions": "Definition", "fv:literal_translation": "Literal Translation", "fv:reference": "Reference",
                               "fv:cultural_note": "Cultural Note", "fv:related_pictures": "Related Pictures", "fv:related_videos": "Related Videos", "fv:related_audio": "Related Audio",

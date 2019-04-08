@@ -184,9 +184,12 @@ class Item:
         if not legacy_contributor:
             self.dialect.flags.dataMismatch(self, nuxeo_str, legacy_contributor, sources)
             return False
-        match = r"^(?!(http[s]?:\/\/)|(www\.))((?:.*?)(?:(?!.\d)([,/](?!( S[rR])|( Elder)))|((( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Herring)|(Learn)|(Language)))))+"
-        contributors = re.split(match, legacy_contributor, re.IGNORECASE)
-        contributors = [con for con in contributors if con not in [",", "/", "", " and ", " & "] and con is not None]
+        match = "(?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|((( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Herring)|(Learn)|(Language)))"
+        if legacy_contributor.startswith("http") or legacy_contributor.startswith("www.") or legacy_contributor.count(".com"):
+            contributors = [legacy_contributor]
+        else:
+            contributors = re.split(match, legacy_contributor, re.IGNORECASE)
+            contributors = [con for con in contributors if con not in [",", "/", "", " and ", " & "] and con is not None]
         for con in contributors:
             if con.strip() not in sources:
                 match = False
@@ -233,4 +236,4 @@ class Item:
         return connect.status_code in [200, 302]
 
     def html_strip(self, html_string):
-        return re.sub('<[^<]+?>', '', str(html_string)).strip()
+        return re.sub('<[^<]+?>', '', str(html_string)).replace("\r\n", "").strip()
