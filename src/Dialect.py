@@ -138,7 +138,7 @@ class Dialect(Item):
         self.doc = self.Data.nuxeo_dialects.get(self.id)
 
         if self.doc is None:
-            print("dialect no doc: " + str(self.id))  ## Missing Dialect Error
+            print("Dialect not in nuxeo: " + str(self.id))
             return False
         self.get_words()
         self.get_alphabet()
@@ -626,6 +626,3 @@ class Dialect(Item):
             Updater().update_property(error[1], error[6], error[7])
             print(str(error[1])+" "+str(error[2])+" "+str(error[3])+" "+str(error[4])+" "+str(error[5])+" "+str(error[6])+" "+str(error[7]))
 
-# ID, FILENAME, DESCR, PHOTOGRAPHER, CONTRIBUTER, RECORDER, "
-#     "STATUS_ID, ALPH_ORDER, YEAR, CAPTION, CHANGE_DTTM
-# GalleryMediaFile(self, r[0], r[1].strip(), r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], "art", r[10])

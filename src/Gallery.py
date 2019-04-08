@@ -54,8 +54,6 @@ class Gallery:
                     got_con = True
                 except HTTPError:
                     self.nuxeo = Nuxeo(host=Authorize.nuxeoUrl, auth=(Authorize.nuxeoUser, Authorize.nuxeoPassword))
-                    print("err")
-                    print(self.nuxeo)
 
             entries = queried.get("entries")
             for item in entries:
@@ -65,18 +63,16 @@ class Gallery:
             related_pics = self.get_pictures(art_gallery, doc.path, contributors)
             print([doc.path+"/Portal/", "Art Gallery", "FVGallery", {'dc:title': "Art Gallery",
                                                                      "fv:related_pictures": related_pics}])
-            # art_gal = Updater().create_doc(doc.path+"/Portal/", "Art Gallery", "FVGallery", {'dc:title': "Art Gallery",
-            #                                                                                     "fv:related_pictures": related_pics})
+            art_gal = Updater().create_doc(doc.path+"/Portal/", "Art Gallery", "FVGallery", {'dc:title': "Art Gallery",
+                                           "fv:related_pictures": related_pics})
         if photo_gallery:
             related_pics = self.get_pictures(photo_gallery, doc.path, contributors)
             print([doc.path+"/Portal/", "Photo Gallery", "FVGallery", {'dc:title': "Photo Gallery",
                                                                      "fv:related_pictures": related_pics}])
-            # photo_gal = Updater().create_doc(doc.path+"/Portal/", "Photo Gallery", "FVGallery", {'dc:title': "Photo Gallery",
-            #                                                                                         "fv:related_pictures": related_pics})
-            # how to update state, create not published
+            photo_gal = Updater().create_doc(doc.path+"/Portal/", "Photo Gallery", "FVGallery", {'dc:title': "Photo Gallery",
+                                             "fv:related_pictures": related_pics})
 
     def get_pictures(self, gallery, path, contributors):
-        updater = Updater()
         related_pics = []
         for pic in gallery:
             change = None
@@ -92,23 +88,23 @@ class Gallery:
                     pic_title = pic[1][pic[1].index("\\")+1:]
             pic_properties = {'dc:title': pic_title, "fvm:source": source, "fvm:recorder": recorder, "dc:description": pic[2],
                               "fvl:import_id": pic[0], "fvl:change_date": change, "fvl:status_id": pic[6]}
-            print([path+"/Resources/", pic_title, "FVPicture", pic_properties, pic[1]])
-            # pic = updater.create_doc(path+"/Resources/", pic_title, "FVPicture", pic_properties, pic[1])
-            related_pics.append(pic_title)  #related_pics.append(pic.uid)
+            pic = Updater().create_doc(path+"/Resources/", pic_title, "FVPicture", pic_properties, pic[1])
+            related_pics.append(pic.uid)
         return related_pics
 
     def contributors(self, contributors, contributors_list, path):
-        match = r"^(?!(http[s]?:\/\/)|(www\.))((?:.*?)(?:(?!.\d)([,/](?!( S[rR])|( Elder)))|(?:(?:( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Herring)|(Learn)|(Language)))))+"
+        match = "(?<!\d)([,/](?!( S[rR])|( Elder)|(.$)))|((( and )|( & ))(?!(Cultur)|(historian)|(mentor)|(Hand)|(Media)|(Elder)|(dictionary)|(Wildlife)|(Herring)|(Learn)|(Language)))"
         sources = []
         if contributors:
-            cons = re.split(match, contributors, re.IGNORECASE)
-            cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
+            if contributors.startswith("http") or contributors.startswith("www.") or contributors.count(".com"):
+                cons = [contributors]
+            else:
+                cons = re.split(match, contributors, re.IGNORECASE)
+                cons = [con for con in cons if con not in [",", "/", "", " and ", " & "] and con is not None]
             for name in cons:
                 if name in contributors_list:
-                    sources.append(name)  # sources.append(contributor_list.get(name))
-                    print("name in nuxeo: "+name)
+                    sources.append(contributors_list.get(name))
                 else:
-                    print([path+"/Contributors/", name, "FVContributor", {'dc:title': name}])
-                    # con = updater.create_doc(path+"/Contributors/", name, "FVContributor", {'dc:title': name})
-                    sources.append(name)  # source.append(con.uid)
+                    con = Updater().create_doc(path+"/Contributors/", name, "FVContributor", {'dc:title': name})
+                    sources.append(con.uid)
         return sources

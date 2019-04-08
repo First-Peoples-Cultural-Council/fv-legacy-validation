@@ -79,6 +79,8 @@ class Exporter:
                               "CULTURAL_NOTE, "  # IMAGE_ENTRY_ID, SOUND_ENTRY_ID, VIDEO_ENTRY_ID, 
                               "ABORIGINAL_LANGUAGE_INTRO, DOMINANT_LANGUAGE_INTRO, AUTHOR, AUTHOR_REFERENCE, "
                               "CONTRIBUTER_REFERENCE, DOMINANT_LANGUAGE_TRANSLATION","FIRSTVOX.SENTRY_BOOK", "and SSTYPE_ID = 2"]}
+        self.users = "ID, EMAIL, FIRST_NAME, LAST_NAME, TRIBE_AFFIL, ROLE, RECORDER_REQUIRES_APPROVAL, ADDRESS, CITY, PROVINCE," \
+                     " ZIP, COUNTRY, FAX, PHONE, AGE, DATE_AGE_RECORDED, GENDER, STATUS"
 
     def export(self, dialect, title, headers, table, where=None):
         print(title)
@@ -147,18 +149,7 @@ class Exporter:
 
             csvWriter.writerows(to_csv)
 
-    def main(self):
-
-        users = "ID, EMAIL, FIRST_NAME, LAST_NAME, TRIBE_AFFIL, ROLE, RECORDER_REQUIRES_APPROVAL, ADDRESS, CITY, PROVINCE," \
-                " ZIP, COUNTRY, FAX, PHONE, AGE, DATE_AGE_RECORDED, GENDER, STATUS"
-          ### book entries
-
-        for dialect in self.dialects:
-            for type in self.tables:
-                self.export(dialect, self.dialects.get(dialect)+type+".csv" ,self.tables.get(type)[0], self.tables.get(type)[1], self.tables.get(type)[2])
-            self.user_export(dialect, self.dialects.get(dialect)+"Users"+".csv", users)
-
-    def upload_reports(self, path):
+    def upload_reports(self, ids, path=os.getcwd()):
         nuxeo_dialects = {}
         got_dialects = False
         dialects = None
@@ -173,23 +164,26 @@ class Exporter:
         entries = dialects.get("entries")
         for item in entries:
             nuxeo_dialects[item.get("fvl:import_id")] = item
-        for dialect in self.dialects:
-            if nuxeo_dialects.get(dialect):
-                for type in self.tables:
-                    self.upload(self.dialects.get(dialect)+type+".csv", path, nuxeo_dialects.get(dialect).path)
-                self.upload(self.dialects.get(dialect)+"Users.csv", path, nuxeo_dialects.get(dialect).path)
-            else:
-                print(self.dialects.get(dialect)+" does not exist in nuxeo")
 
-    def upload(self, title, file_path, nuxeo_path):
-        title = title.replace(" ", "").replace("/", "")
+        for dialect_id, dialect_name in ids.items():
+            if nuxeo_dialects.get(dialect_id):
+                for type in self.tables:
+                    self.upload_link(dialect_name+type+".csv", path, nuxeo_dialects.get(dialect_id).path, "List of "+type.lower()+" from legacy site")
+                self.upload_link(dialect_name+"Users.csv", path, nuxeo_dialects.get(dialect_id).path, "List of users from legacy site")
+            else:
+                print(dialect_name+" does not exist in nuxeo")
+
+    def upload_link(self, title, file_path, nuxeo_path, descr): # file_path = path to directory where reports are, nuxeo_path = parent path to put links
         if file_path.count("\\"):
             file_path = file_path.replace("\\", "/")
-        if os.path.isfile(file_path+'/'+title):
-            Updater().create_doc(nuxeo_path+"/Links", title, "FVLink", {'dc:title': title}, file_path+'/'+title)
+        if not file_path.endswith("/"):
+            file_path = file_path+"/"
+        if os.path.isfile(file_path+title.replace(" ", "").replace("/", "")):
+            Updater().create_doc(nuxeo_path+"/Links", "Legacy "+title, "FVLink", {'dc:title': "Legacy "+title, 'dc:description': descr}, file_path+title.replace(" ", "").replace("/", ""))
+            print([nuxeo_path+"/Links", "Legacy "+title, "FVLink", {'dc:title': "Legacy "+title, 'dc:description': descr}, file_path+title.replace(" ", "").replace("/", "")])
 
-
-ex = Exporter()
-ex.main()
-# ex.upload_reports(os.getcwd())
-
+    def export_dialects(self, ids):
+        for dialect_id, dialect_name in ids.items():
+            for type in self.tables:
+                self.export(dialect_id, dialect_name+type+".csv" ,self.tables.get(type)[0], self.tables.get(type)[1], self.tables.get(type)[2])
+            self.user_export(dialect_id, dialect_name+"Users"+".csv", self.users)
